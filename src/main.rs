@@ -1,8 +1,17 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
-
 extern crate rocket;
 extern crate rand;
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_codegen;
+extern crate dotenv;
+extern crate r2d2;
+extern crate r2d2_diesel;
+#[macro_use]
+extern crate lazy_static;
+extern crate ring;
 
 use std::io;
 use std::path::Path;
@@ -10,8 +19,21 @@ use std::fs::File;
 
 use rocket::Data;
 
+use diesel::pg::PgConnection;
+use r2d2::Pool;
+use r2d2_diesel::ConnectionManager;
+
+mod models;
+mod services;
+mod helpers;
+
 mod paste_id;
 use paste_id::PasteID;
+
+lazy_static! {
+    pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
+}
+
 
 #[get("/")]
 fn index() -> &'static str {
