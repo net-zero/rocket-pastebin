@@ -64,6 +64,7 @@ mod tests {
     use r2d2_diesel::ConnectionManager;
 
     use super::super::helpers;
+    use super::super::testdata;
 
     lazy_static! {
         pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
@@ -74,44 +75,31 @@ mod tests {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
         let mut new_user = RawUser {
             username: "test",
-            email: "test@example.com",
+            email: "TEST@example.com",
             password: "password",
         };
 
-        assert_eq!(diesel::delete(users::table).execute(conn).is_ok(), true);
+        testdata::clear(conn);
+        let user = create_user(&new_user, conn).unwrap();
 
-        let mut result = create_user(&new_user, conn);
-        assert_eq!(result.is_ok(), true);
-
-        let user = result.unwrap();
         assert_eq!(user.username, new_user.username);
-        assert_eq!(user.email, new_user.email);
+        assert_eq!(user.email, new_user.email.to_lowercase().as_ref());
         // admin flag should be false by default
         assert_eq!(user.admin, false);
 
         // test duplicate email
         new_user.username = "test1";
-        new_user.email = "TEST@example.com";
-
-        result = create_user(&new_user, conn);
-        assert_eq!(result.is_err(), true);
+        assert_eq!(create_user(&new_user, conn).is_err(), true);
 
         // test duplicate username
         new_user.username = "test";
         new_user.email = "test1@example.com";
-
-        result = create_user(&new_user, conn);
-        assert_eq!(result.is_err(), true);
+        assert_eq!(create_user(&new_user, conn).is_err(), true);
     }
 
     #[test]
     fn test_update_user() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
-        let new_user = RawUser {
-            username: "test2",
-            email: "test2@example.com",
-            password: "password2",
-        };
         let mut updated_user = RawUpdatedUser {
             username: Some("test22"),
             email: Some("TEST22@example.com"),
@@ -123,78 +111,34 @@ mod tests {
             password: "password222",
         };
 
-        assert_eq!(diesel::delete(users::table).execute(conn).is_ok(), true);
+        let user_id = testdata::recreate(conn).user.id;
 
-        let mut result = create_user(&new_user, conn);
-        assert_eq!(result.is_ok(), true);
-
-        // username update
-        let user_id = result.unwrap().id;
-        result = update_user(user_id,
-                             &RawUpdatedUser {
-                                  username: updated_user.username,
-                                  email: None,
-                                  password: None,
-                              },
-                             conn);
-        assert_eq!(result.is_ok(), true);
-        let mut user = result.unwrap();
+        // username, case-sensitive email and password update
+        let user = update_user(user_id, &updated_user, conn).unwrap();
         assert_eq!(user.username, updated_user.username.unwrap());
-
-        // case-sensitive email and password update
-        result = update_user(user_id,
-                             &RawUpdatedUser {
-                                  username: None,
-                                  email: updated_user.email,
-                                  password: updated_user.password,
-                              },
-                             conn);
-        assert_eq!(result.is_ok(), true);
-        user = result.unwrap();
         assert_eq!(user.email, updated_user.email.unwrap().to_lowercase());
         assert_eq!(user.password_digest,
                    digest::digest_password(user.username.as_ref(), updated_user.password.unwrap()));
 
+        // create user for duplicate username and email test
+        assert_eq!(create_user(&duplicate_user, conn).is_ok(), true);
+
         // duplicate username update
-        result = create_user(&duplicate_user, conn);
-        assert_eq!(result.is_ok(), true);
-        result = update_user(user_id,
-                             &RawUpdatedUser {
-                                  username: Some(duplicate_user.username),
-                                  email: None,
-                                  password: None,
-                              },
-                             conn);
-        assert_eq!(result.is_err(), true);
+        updated_user.username = Some(duplicate_user.username);
+        assert_eq!(update_user(user_id, &updated_user, conn).is_err(), true);
 
         // duplicate email update
-        result = update_user(user_id,
-                             &RawUpdatedUser {
-                                  username: None,
-                                  email: Some(duplicate_user.email),
-                                  password: None,
-                              },
-                             conn);
-        assert_eq!(result.is_err(), true);
+        updated_user.username = Some("NotDuplicateName");
+        updated_user.email = Some(duplicate_user.email);
+        assert_eq!(update_user(user_id, &updated_user, conn).is_err(), true);
     }
 
     #[test]
     fn test_get_user_by_id() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
-        let new_user = RawUser {
-            username: "test3",
-            email: "test3@example.com",
-            password: "password3",
-        };
 
-        assert_eq!(diesel::delete(users::table).execute(conn).is_ok(), true);
-        let mut result = create_user(&new_user, conn);
-        assert_eq!(result.is_ok(), true);
-        let user = result.unwrap();
-
-        result = get_user_by_id(user.id, conn);
-        assert_eq!(result.is_ok(), true);
-        let fetched_user = result.unwrap();
+        let user = testdata::recreate(conn).user;
+        let fetched_user = get_user_by_id(user.id, conn).unwrap();
 
         assert_eq!(fetched_user.username, user.username);
         assert_eq!(fetched_user.email, user.email);
@@ -204,19 +148,16 @@ mod tests {
     #[test]
     fn test_delete_user() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
+        // test user from test data is bound to test paste, it
+        // cannot be delete without delete paste first
         let new_user = RawUser {
-            username: "test4",
-            email: "test4@example.com",
-            password: "password4",
+            username: "test2",
+            email: "TEST2@example.com",
+            password: "password2",
         };
 
-        assert_eq!(diesel::delete(users::table).execute(conn).is_ok(), true);
-
-        let mut result = create_user(&new_user, conn);
-        assert_eq!(result.is_ok(), true);
-        let user = result.unwrap();
-
-        let del_num = delete_user(user.id, conn);
-        assert_eq!(del_num, Ok(1));
+        testdata::clear(conn);
+        let user_id = create_user(&new_user, conn).unwrap().id;
+        assert_eq!(delete_user(user_id, conn), Ok(1));
     }
 }
