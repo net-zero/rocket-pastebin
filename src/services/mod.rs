@@ -3,6 +3,7 @@ use super::models;
 
 pub mod users;
 pub mod pastes;
+pub mod auth;
 
 pub mod testdata {
     use diesel;

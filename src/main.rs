@@ -12,6 +12,9 @@ extern crate r2d2_diesel;
 #[macro_use]
 extern crate lazy_static;
 extern crate ring;
+extern crate jsonwebtoken as jwt;
+#[macro_use]
+extern crate serde_derive;
 
 use std::io;
 use std::path::Path;
