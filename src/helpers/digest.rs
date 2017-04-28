@@ -1,6 +1,7 @@
 use ring::pbkdf2;
-use std::env;
 use std::convert::From;
+
+use super::super::ENV;
 
 static PBKDF2_PRF: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
 static PBKDF2_ITER: u32 = 1000;
@@ -31,7 +32,7 @@ pub fn verify_password(username: &str,
 }
 
 fn salt(username: &str) -> Vec<u8> {
-    let digest_salt = env::var("DIGEST_SALT").expect("DIGEST_SALT must be set");
+    let digest_salt: &str = ENV.digest_salt.as_ref();
     let mut salt = Vec::with_capacity(digest_salt.as_bytes().len() + username.as_bytes().len());
     salt.extend(digest_salt.as_bytes().as_ref());
     salt.extend(username.as_bytes());

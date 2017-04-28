@@ -1,7 +1,8 @@
-use std::env;
 use jwt::{encode, Header};
 use jwt::errors;
 use super::models::users::User;
+
+use super::super::ENV;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -16,7 +17,7 @@ pub fn login(user: &User) -> Result<String, errors::Error> {
         username: user.username.clone(),
         admin: user.admin,
     };
-    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    let jwt_secret: &str = ENV.jwt_secret.as_ref();
 
     encode(&Header::default(), &claims, jwt_secret.as_bytes())
 }

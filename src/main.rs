@@ -34,6 +34,7 @@ mod paste_id;
 use paste_id::PasteID;
 
 lazy_static! {
+    pub static ref ENV: helpers::env::Env = helpers::env::load();
     pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
 }
 

@@ -8,14 +8,10 @@ use rocket::http::Status;
 use rocket::Request;
 
 use super::super::DB_POOL;
-
-use dotenv::dotenv;
-use std::env;
+use super::super::ENV;
 
 pub fn create_db_pool() -> Pool<ConnectionManager<PgConnection>> {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = ENV.database_url.as_ref();
     let config = Config::default();
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     Pool::new(config, manager).expect("Failed to create pool.")
