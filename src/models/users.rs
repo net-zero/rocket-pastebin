@@ -22,6 +22,7 @@ pub struct NewUser<'a> {
 }
 
 #[derive(Queryable)]
+#[has_many(pastes)]
 pub struct User {
     pub id: i32,
     pub username: String,
