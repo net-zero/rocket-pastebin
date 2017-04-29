@@ -15,11 +15,10 @@ pub mod testdata {
     use super::pastes::*;
 
     // models
-    use super::models::users::*;
     use super::models::pastes::*;
     use super::models::schema::*;
 
-    pub const test_user: RawUser = RawUser {
+    pub const test_user: NewUser = NewUser {
         username: "test",
         email: "test@example.com",
         password: "password",
