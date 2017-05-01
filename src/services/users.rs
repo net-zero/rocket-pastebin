@@ -6,17 +6,19 @@ use diesel::result;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
-use super::helpers::digest;
-use super::models::schema;
-use super::models::users::{User as ModelUser, NewUser as ModelNewUser};
+use helpers::digest;
+use models::schema;
+use models::users::{User as ModelUser, NewUser as ModelNewUser};
 
 use self::schema::users;
 
+#[derive(Serialize)]
 pub struct User {
     pub id: i32,
     pub username: String,
     pub email: String,
     pub admin: bool,
+    #[serde(skip_serializing)]
     password_digest: Vec<u8>,
 }
 
@@ -115,12 +117,8 @@ mod tests {
     use r2d2::Pool;
     use r2d2_diesel::ConnectionManager;
 
-    use super::super::helpers;
-    use super::super::testdata;
-
-    lazy_static! {
-        pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
-    }
+    use DB_POOL;
+    use tests::helpers::testdata;
 
     #[test]
     fn test_create_user() {
@@ -131,7 +129,7 @@ mod tests {
             password: "password",
         };
 
-        testdata::clear(conn);
+        testdata::clear();
         let user = create_user(&new_user, conn).unwrap();
 
         assert_eq!(user.username, new_user.username);
@@ -164,7 +162,7 @@ mod tests {
             password: "password222",
         };
 
-        let user_id = testdata::recreate(conn).user.id;
+        let user_id = testdata::recreate().user.id;
 
         // username, case-sensitive email and password update
         let user = update_user(user_id, &updated_user, conn).unwrap();
@@ -189,7 +187,7 @@ mod tests {
     fn test_get_user_by_id() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
 
-        let user = testdata::recreate(conn).user;
+        let user = testdata::recreate().user;
         let fetched_user = get_user_by_id(user.id, conn).unwrap();
 
         assert_eq!(fetched_user.username, user.username);
@@ -202,7 +200,7 @@ mod tests {
     fn test_get_user_by_name() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
 
-        let user = testdata::recreate(conn).user;
+        let user = testdata::recreate().user;
         let fetched_user = get_user_by_name(user.username.as_ref(), conn).unwrap();
 
         assert_eq!(fetched_user.id, user.id);
@@ -222,7 +220,7 @@ mod tests {
             password: "password2",
         };
 
-        testdata::clear(conn);
+        testdata::clear();
         let user_id = create_user(&new_user, conn).unwrap().id;
         assert_eq!(delete_user(user_id, conn), Ok(1));
     }

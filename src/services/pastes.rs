@@ -3,8 +3,8 @@ use diesel::result;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
-use super::models::schema;
-use super::models::pastes::*;
+use models::schema;
+use models::pastes::*;
 
 use self::schema::pastes;
 
@@ -37,20 +37,16 @@ mod tests {
     use r2d2::Pool;
     use r2d2_diesel::ConnectionManager;
 
-    use super::super::helpers;
-    use super::super::testdata;
-    use super::super::models::users::*;
+    use DB_POOL;
+    use tests::helpers::testdata;
 
-    lazy_static! {
-        pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
-    }
 
     #[test]
     fn test_create_paste() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
         let paste_data = "test paste data";
 
-        let user_id = testdata::recreate(conn).user.id;
+        let user_id = testdata::recreate().user.id;
 
         let new_paste = NewPaste {
             user_id: user_id,
@@ -67,7 +63,7 @@ mod tests {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
         let updated_data = "updated paste data";
 
-        let mut paste = testdata::recreate(conn).paste;
+        let mut paste = testdata::recreate().paste;
         let updated_paste = Paste {
             id: paste.id,
             user_id: paste.user_id,
@@ -81,7 +77,7 @@ mod tests {
     fn test_get_paste_by_id() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
 
-        let test_paste = testdata::recreate(conn).paste;
+        let test_paste = testdata::recreate().paste;
         let fetched_paste = get_paste_by_id(test_paste.id, conn).unwrap();
         assert_eq!(fetched_paste.id, test_paste.id);
         assert_eq!(fetched_paste.user_id, test_paste.user_id);
@@ -93,7 +89,7 @@ mod tests {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
         let paste_data = "test paste data";
 
-        let user_id = testdata::recreate(conn).user.id;
+        let user_id = testdata::recreate().user.id;
         let paste = NewPaste {
             user_id,
             data: paste_data.to_string(),

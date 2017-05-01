@@ -1,7 +1,7 @@
 use ring::pbkdf2;
 use std::convert::From;
 
-use super::super::ENV;
+use ENV;
 
 static PBKDF2_PRF: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
 static PBKDF2_ITER: u32 = 1000;

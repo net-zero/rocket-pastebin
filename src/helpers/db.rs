@@ -7,8 +7,8 @@ use rocket::Outcome::{Success, Failure};
 use rocket::http::Status;
 use rocket::Request;
 
-use super::super::DB_POOL;
-use super::super::ENV;
+use DB_POOL;
+use ENV;
 
 pub fn create_db_pool() -> Pool<ConnectionManager<PgConnection>> {
     let database_url = ENV.database_url.as_ref();

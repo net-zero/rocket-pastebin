@@ -1,5 +1,5 @@
 // This is required for NewPaste
-use super::schema::pastes;
+use models::schema::pastes;
 
 #[derive(Queryable)]
 #[belongs_to(User)]

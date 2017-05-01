@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use rand::{self, Rng};
 
 use rocket::request::FromParam;
+use rocket::http::RawStr;
 
 /// table to retrieve base62 values from.
 const BASE62: &'static [u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -44,7 +45,7 @@ fn valid_id(id: &str) -> bool {
 impl<'a> FromParam<'a> for PasteID<'a> {
     type Error = &'a str;
 
-    fn from_param(param: &'a str) -> Result<PasteID<'a>, &'a str> {
+    fn from_param(param: &'a RawStr) -> Result<PasteID<'a>, &'a str> {
         match valid_id(param) {
             true => Ok(PasteID(Cow::Borrowed(param))),
             false => Err(param),

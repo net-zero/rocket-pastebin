@@ -1,5 +1,5 @@
 // This is required for NewUser
-use super::schema::users;
+use models::schema::users;
 
 #[derive(Insertable)]
 #[table_name="users"]

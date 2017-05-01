@@ -1,4 +1,4 @@
-#![feature(plugin, custom_attribute)]
+#![feature(plugin, custom_attribute, custom_derive)]
 #![plugin(rocket_codegen)]
 extern crate rocket;
 extern crate rand;
@@ -15,6 +15,9 @@ extern crate ring;
 extern crate jsonwebtoken as jwt;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+#[macro_use]
+extern crate rocket_contrib;
 
 use std::io;
 use std::path::Path;
@@ -29,9 +32,14 @@ use r2d2_diesel::ConnectionManager;
 mod models;
 mod services;
 mod helpers;
+mod controllers;
+#[cfg(test)]
+mod tests;
 
 mod paste_id;
 use paste_id::PasteID;
+
+use controllers::auth;
 
 lazy_static! {
     pub static ref ENV: helpers::env::Env = helpers::env::load();
@@ -72,8 +80,10 @@ fn retrieve(id: PasteID) -> Option<File> {
     File::open(&filename).ok()
 }
 
+fn rocket() -> rocket::Rocket {
+    rocket::ignite().mount("/", routes![index, upload, retrieve, auth::login])
+}
+
 pub fn main() {
-    rocket::ignite()
-        .mount("/", routes![index, upload, retrieve])
-        .launch()
+    rocket().launch();
 }

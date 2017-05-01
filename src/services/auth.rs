@@ -1,8 +1,8 @@
 use jwt::{encode, Header};
 use jwt::errors;
-use super::models::users::User;
 
-use super::super::ENV;
+use services::users::User;
+use ENV;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
