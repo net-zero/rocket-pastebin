@@ -126,3 +126,72 @@ fn test_get_paste_by_id() {
         assert_eq!(err.msg, "fail to get paste");
     });
 }
+
+macro_rules! update_paste_req {
+    ($updated_paste: expr, $endpoint: expr) => (
+        MockRequest::new(Put, $endpoint)
+        .header(ContentType::Form)
+        .body(&format!("id={}&user_id={}&data={}",
+                       $updated_paste.id,
+                       $updated_paste.user_id,
+                       $updated_paste.data));
+    )
+}
+
+#[test]
+fn test_update_paste_by_id() {
+    let testdata::Data {
+        paste: test_paste,
+        normal_header,
+        admin_header,
+        ..
+    } = testdata::recreate();
+    let rocket = rocket();
+    let mut updated_paste = Paste {
+        id: test_paste.id,
+        user_id: test_paste.user_id,
+        data: "test updated paste".to_string(),
+    };
+
+    let endpont = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
+    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let paste: Paste = serde_json::from_str(&body).unwrap();
+        assert_eq!(paste, updated_paste);
+    });
+
+    // update using admin permission
+    updated_paste.data = "update paste by admin".to_string();
+    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let paste: Paste = serde_json::from_str(&body).unwrap();
+        assert_eq!(paste, updated_paste);
+    });
+
+    // user_id doesn't match
+    updated_paste.user_id = -1;
+    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::BadRequest.code);
+        assert_eq!(err.msg, "user_id or paste id doesn't match");
+    });
+
+    // paste id doesn't match
+    updated_paste.user_id = test_paste.id;
+    updated_paste.id = -1;
+    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::BadRequest.code);
+        assert_eq!(err.msg, "user_id or paste id doesn't match");
+    });
+}
