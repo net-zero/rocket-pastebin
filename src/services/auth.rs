@@ -5,14 +5,14 @@ use services::users::User;
 use ENV;
 
 #[derive(Serialize, Deserialize)]
-pub struct Claims {
-    user_id: i32,
-    username: String,
-    admin: bool,
+pub struct JwtClaims {
+    pub user_id: i32,
+    pub username: String,
+    pub admin: bool,
 }
 
 pub fn login(user: &User) -> Result<String, errors::Error> {
-    let claims = Claims {
+    let claims = JwtClaims {
         user_id: user.id,
         username: user.username.clone(),
         admin: user.admin,

@@ -1,8 +1,10 @@
 use std::fmt;
 use std::error;
-use std::convert::From;
+use std::convert::Into;
 
 use rocket::http::Status;
+use rocket::response::status::Custom;
+use rocket_contrib::{JSON, Value};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
@@ -23,6 +25,14 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&error::Error> {
         None
+    }
+}
+
+impl Into<Custom<JSON<Value>>> for Error {
+    fn into(self) -> Custom<JSON<Value>> {
+        let code = self.code;
+        let status = Status::from_code(code).unwrap_or(Status::new(code, "custom code"));
+        Custom(status, JSON(json!(self)))
     }
 }
 

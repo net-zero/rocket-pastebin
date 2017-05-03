@@ -5,27 +5,37 @@ macro_rules! run_test {
     })
 }
 
+macro_rules! body_string {
+    ($response: expr) => (
+        $response.body().unwrap().into_string().unwrap();
+    )
+}
+
 pub mod testdata {
     use diesel;
     use diesel::prelude::*;
     use diesel::pg::PgConnection;
 
+    use jwt::{encode, Header};
+
     // services
     use services::users::*;
     use services::pastes::*;
+    use services::auth::JwtClaims;
 
     // models
     use models::pastes::*;
     use models::schema::*;
 
     use DB_POOL;
+    use ENV;
 
-    pub const test_user: NewUser = NewUser {
+    pub const TEST_USER: NewUser = NewUser {
         username: "test",
         email: "test@example.com",
         password: "password",
     };
-    pub const test_paste_data: &str = "test paste data";
+    pub const TEST_PASTE_DATA: &str = "test paste data";
 
     pub struct Data {
         pub user: User,
@@ -34,10 +44,10 @@ pub mod testdata {
 
     pub fn create() -> Data {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
-        let user = create_user(&test_user, conn).expect("Fail to create test user");
+        let user = create_user(&TEST_USER, conn).expect("Fail to create test user");
         let test_paste = NewPaste {
             user_id: user.id,
-            data: test_paste_data.to_string(),
+            data: TEST_PASTE_DATA.to_string(),
         };
         let paste = create_paste(&test_paste, conn).expect("Fail to create test paste");
         Data { user, paste }
@@ -57,5 +67,25 @@ pub mod testdata {
     pub fn recreate() -> Data {
         clear();
         create()
+    }
+
+    pub fn normal_user_auth_token(user_id: i32, username: &str) -> String {
+        let claims = JwtClaims {
+            user_id,
+            username: username.to_string(),
+            admin: false,
+        };
+        let jwt_secret: &str = ENV.jwt_secret.as_ref();
+        encode(&Header::default(), &claims, jwt_secret.as_bytes()).unwrap()
+    }
+
+    pub fn admin_user_auth_token(user_id: i32, username: &str) -> String {
+        let claims = JwtClaims {
+            user_id,
+            username: username.to_string(),
+            admin: true,
+        };
+        let jwt_secret: &str = ENV.jwt_secret.as_ref();
+        encode(&Header::default(), &claims, jwt_secret.as_bytes()).unwrap()
     }
 }

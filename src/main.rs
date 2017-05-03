@@ -40,6 +40,7 @@ mod paste_id;
 use paste_id::PasteID;
 
 use controllers::auth;
+use controllers::user;
 
 lazy_static! {
     pub static ref ENV: helpers::env::Env = helpers::env::load();
@@ -81,7 +82,13 @@ fn retrieve(id: PasteID) -> Option<File> {
 }
 
 fn rocket() -> rocket::Rocket {
-    rocket::ignite().mount("/", routes![index, upload, retrieve, auth::login])
+    rocket::ignite().mount("/",
+                           routes![index,
+                                   upload,
+                                   retrieve,
+                                   auth::login,
+                                   user::me,
+                                   user::get_users])
 }
 
 pub fn main() {

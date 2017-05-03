@@ -25,7 +25,7 @@ macro_rules! login_req {
 fn test_login() {
     testdata::recreate();
 
-    let test_user = testdata::test_user;
+    let test_user = testdata::TEST_USER;
     let rocket = rocket();
 
     let req = login_req!(test_user.username, test_user.password);

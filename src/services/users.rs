@@ -12,13 +12,13 @@ use models::users::{User as ModelUser, NewUser as ModelNewUser};
 
 use self::schema::users;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct User {
     pub id: i32,
     pub username: String,
     pub email: String,
     pub admin: bool,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing, skip_deserializing)]
     password_digest: Vec<u8>,
 }
 
@@ -102,6 +102,14 @@ pub fn get_user_by_name(username: &str, conn: &PgConnection) -> Result<User, res
         .filter(users::username.eq(username))
         .get_result::<ModelUser>(conn)
         .and_then(|user| Ok(user.into()))
+}
+
+// TODO: paging
+pub fn get_user_list(conn: &PgConnection) -> Result<Vec<User>, result::Error> {
+    users::table
+        .limit(20)
+        .load::<ModelUser>(conn)
+        .and_then(|users| Ok(users.into_iter().map(|user| user.into()).collect()))
 }
 
 pub fn delete_user(id: i32, conn: &PgConnection) -> Result<usize, result::Error> {
@@ -192,7 +200,7 @@ mod tests {
 
         assert_eq!(fetched_user.username, user.username);
         assert_eq!(fetched_user.email, user.email);
-        assert_eq!(fetched_user.verify_password(testdata::test_user.password),
+        assert_eq!(fetched_user.verify_password(testdata::TEST_USER.password),
                    true);
     }
 
@@ -205,7 +213,7 @@ mod tests {
 
         assert_eq!(fetched_user.id, user.id);
         assert_eq!(fetched_user.email, user.email);
-        assert_eq!(fetched_user.verify_password(testdata::test_user.password),
+        assert_eq!(fetched_user.verify_password(testdata::TEST_USER.password),
                    true);
     }
 
