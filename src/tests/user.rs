@@ -219,3 +219,77 @@ fn test_get_user_by_id() {
         assert_eq!(err.msg, "user not found");
     })
 }
+
+macro_rules! update_user_req {
+    ($updated_user: expr, $user_id: expr) => (
+        MockRequest::new(Put, format!("/users/{}", $user_id))
+        .header(ContentType::Form)
+        .body(&format!("username={}&email={}&password={}&confirm_password={}",
+                       $updated_user.0,
+                       $updated_user.1,
+                       $updated_user.2,
+                       $updated_user.3));
+    )
+}
+
+#[test]
+fn test_update_user_by_id() {
+    let test_user = testdata::recreate().user;
+    let mut endpoint = format!("/users/{}", test_user.id);
+    let normal_token = testdata::normal_user_auth_token(test_user.id, &test_user.username);
+    let normal_header = Header::new("Authorization", "Bearer ".to_string() + &normal_token);
+    let admin_token = testdata::admin_user_auth_token(1, "admin");
+    let admin_header = Header::new("Authorization", "Bearer ".to_string() + &admin_token);
+    let mut updated_user =
+        ("update_user", "update_user@exmaple.com", "updated_password", "updated_password");
+    let rocket = rocket();
+
+    let mut req = update_user_req!(updated_user, test_user.id);
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let user: User = serde_json::from_str(&body).unwrap();
+        assert_eq!(user.username, updated_user.0);
+        assert_eq!(user.email, updated_user.1);
+    });
+
+    // without token
+    let req = update_user_req!(updated_user, test_user.id);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Unauthorized.code);
+        assert_eq!(err.msg, "token not found");
+    });
+
+    // invalid token
+    let wrong_token = Header::new("Authorization", "Bearer wrongtoken");
+    let mut req = update_user_req!(updated_user, test_user.id);
+    req.add_header(wrong_token);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Unauthorized.code);
+        assert_eq!(err.msg, "invalid token");
+    });
+
+    // id without permission
+    let mut req = update_user_req!(updated_user, -1);
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Forbidden.code);
+        assert_eq!(err.msg, "permission denied");
+    });
+
+    // id with admin token
+    let mut req = update_user_req!(updated_user, -1);
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::InternalServerError.code);
+        assert_eq!(err.msg, "fail to update user");
+    })
+}

@@ -78,3 +78,37 @@ pub fn get_user_by_id(id: i32,
         Err(err) => err.into(),
     }
 }
+
+#[derive(FromForm)]
+pub struct UpdatePayload {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub confirm_password: Option<String>,
+}
+
+#[put("/users/<id>", data = "<payload>")]
+pub fn update_user_by_id(id: i32,
+                         payload: Form<UpdatePayload>,
+                         user: Result<NormalUser, Error>,
+                         admin: Result<AdminUser, Error>,
+                         db: DB)
+                         -> Custom<JSON<Value>> {
+    match has_permission(id, user, admin).and_then(|_| {
+        let payload = payload.into_inner();
+        if payload.password.as_ref().is_some() && ( payload.confirm_password.as_ref().is_none() || payload.confirm_password.as_ref().unwrap() != payload.password.as_ref().unwrap() ) {
+            return Err(error::badrequest("password mismatch"));
+        }
+
+        let updated_user = user_serv::UpdatedUser {
+            username: payload.username.as_ref().map(|name| name.as_ref()),
+            email: payload.email.as_ref().map(|email| email.as_ref()),
+            password: payload.password.as_ref().map(|password| password.as_ref()),
+        };
+
+        user_serv::update_user(id, &updated_user, db.conn()).or(Err(error::internal_server_error("fail to update user")))
+    }) {
+            Ok(user) => Custom(Status::Ok, JSON(json!(user))),
+            Err(err) => err.into()
+    }
+}
