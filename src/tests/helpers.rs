@@ -35,22 +35,33 @@ pub mod testdata {
         email: "test@example.com",
         password: "password",
     };
+    pub const TEST_USER_ALT: NewUser = NewUser {
+        username: "test_alt",
+        email: "test_alt@example.com",
+        password: "password",
+    };
     pub const TEST_PASTE_DATA: &str = "test paste data";
 
     pub struct Data {
         pub user: User,
+        pub user_alt: User,
         pub paste: Paste,
     }
 
     pub fn create() -> Data {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
         let user = create_user(&TEST_USER, conn).expect("Fail to create test user");
+        let user_alt = create_user(&TEST_USER_ALT, conn).expect("Fail to create test user alt");
         let test_paste = NewPaste {
             user_id: user.id,
             data: TEST_PASTE_DATA.to_string(),
         };
         let paste = create_paste(&test_paste, conn).expect("Fail to create test paste");
-        Data { user, paste }
+        Data {
+            user,
+            user_alt,
+            paste,
+        }
     }
 
     pub fn clear() {

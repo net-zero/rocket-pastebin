@@ -91,7 +91,8 @@ fn rocket() -> rocket::Rocket {
                                    user::get_users,
                                    user::create_user,
                                    user::get_user_by_id,
-                                   user::update_user_by_id])
+                                   user::update_user_by_id,
+                                   user::delete_user_by_id])
 }
 
 pub fn main() {

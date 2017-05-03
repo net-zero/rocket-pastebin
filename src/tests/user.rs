@@ -64,7 +64,7 @@ fn test_get_users() {
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let users: Vec<User> = serde_json::from_str(&body).unwrap();
-        assert_eq!(users.len(), 1);
+        assert_eq!(users.len(), 2);
         assert_eq!(users[0].id, test_user.id);
         assert_eq!(users[0].username, test_user.username);
         assert_eq!(users[0].email, test_user.email);
@@ -291,5 +291,62 @@ fn test_update_user_by_id() {
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::InternalServerError.code);
         assert_eq!(err.msg, "fail to update user");
+    })
+}
+
+#[test]
+fn test_delete_user_by_id() {
+    let test_user = testdata::recreate().user_alt;
+    let mut endpoint = format!("/users/{}", test_user.id);
+    let normal_token = testdata::normal_user_auth_token(test_user.id, &test_user.username);
+    let normal_header = Header::new("Authorization", "Bearer ".to_string() + &normal_token);
+    let admin_token = testdata::admin_user_auth_token(1, "admin");
+    let admin_header = Header::new("Authorization", "Bearer ".to_string() + &admin_token);
+    let rocket = rocket();
+
+    let mut req = MockRequest::new(Delete, &endpoint);
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        assert!(body.contains("1"));
+    });
+
+    // without token
+    let req = MockRequest::new(Delete, &endpoint);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Unauthorized.code);
+        assert_eq!(err.msg, "token not found");
+    });
+
+    // invalid token
+    let wrong_token = Header::new("Authorization", "Bearer wrongtoken");
+    let mut req = MockRequest::new(Delete, &endpoint);
+    req.add_header(wrong_token);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Unauthorized.code);
+        assert_eq!(err.msg, "invalid token");
+    });
+
+    // id without permission
+    endpoint = format!("/users/{}", -1);
+    let mut req = MockRequest::new(Delete, &endpoint);
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Forbidden.code);
+        assert_eq!(err.msg, "permission denied");
+    });
+
+    // id with admin token
+    let mut req = MockRequest::new(Delete, &endpoint);
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        assert!(body.contains("0"));
     })
 }
