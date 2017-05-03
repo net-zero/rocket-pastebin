@@ -1,7 +1,7 @@
 use rocket;
 use rocket::testing::MockRequest;
 use rocket::http::Method::*;
-use rocket::http::{Status, Header};
+use rocket::http::{Status, Header, ContentType};
 use rocket::Response;
 
 use serde_json;
@@ -9,6 +9,7 @@ use serde_json;
 use helpers::error::Error;
 
 use services::users::User;
+use controllers::user::UserPayload;
 
 use tests::helpers;
 use self::helpers::testdata;
@@ -99,5 +100,59 @@ fn test_get_users() {
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::Forbidden.code);
         assert_eq!(err.msg, "permission denied");
+    });
+}
+
+macro_rules! create_user_req {
+    ($new_user: expr) => (
+        MockRequest::new(Post, "/users")
+        .header(ContentType::Form)
+        .body(&format!("username={}&email={}&password={}&confirm_password={}",
+                       $new_user.username,
+                       $new_user.email,
+                       $new_user.password,
+                       $new_user.confirm_password));
+    )
+}
+
+#[test]
+fn test_create_user() {
+    testdata::recreate();
+
+    let mut new_user = UserPayload {
+        username: "test_new_user".to_string(),
+        email: "test_new_user@example.com".to_string(),
+        password: "new_user_password".to_string(),
+        confirm_password: "new_user_password".to_string(),
+    };
+    let rocket = rocket();
+
+    let req = create_user_req!(new_user);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let user: User = serde_json::from_str(&body).unwrap();
+        assert_eq!(user.username, new_user.username);
+        assert_eq!(user.email, new_user.email);
+    });
+
+    // mismatch password
+    new_user.confirm_password = "wrong password".to_string();
+    let req = create_user_req!(new_user);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::BadRequest.code);
+        assert_eq!(err.msg, "password mismatch");
+    });
+
+    // duplicate username
+    new_user.confirm_password = new_user.password.clone();
+    new_user.username = testdata::TEST_USER.username.to_string();
+    let req = create_user_req!(new_user);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::InternalServerError.code);
+        assert_eq!(err.msg, "fail to create user");
     });
 }

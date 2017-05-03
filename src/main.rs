@@ -88,7 +88,8 @@ fn rocket() -> rocket::Rocket {
                                    retrieve,
                                    auth::login,
                                    user::me,
-                                   user::get_users])
+                                   user::get_users,
+                                   user::create_user])
 }
 
 pub fn main() {
