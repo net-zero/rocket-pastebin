@@ -29,9 +29,7 @@ fn test_get_pastes() {
         let body = body_string!(response);
         let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
         assert_eq!(pastes.len(), 1);
-        assert_eq!(pastes[0].id, test_paste.id);
-        assert_eq!(pastes[0].user_id, test_paste.user_id);
-        assert_eq!(pastes[0].data, test_paste.data);
+        assert_eq!(pastes[0], test_paste);
     });
 
     // normal user token
@@ -104,5 +102,27 @@ fn test_create_paste() {
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::BadRequest.code);
         assert_eq!(err.msg, "user_id doesn't match jwt token");
+    });
+}
+
+#[test]
+fn test_get_paste_by_id() {
+    let test_paste = testdata::recreate().paste;
+    let rocket = rocket();
+
+    let req = MockRequest::new(Get, format!("/pastes/{}", test_paste.id));
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let paste: Paste = serde_json::from_str(&body).unwrap();
+        assert_eq!(paste, test_paste);
+    });
+
+    // invalid paste id
+    let req = MockRequest::new(Get, format!("/pastes/{}", -1));
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::InternalServerError.code);
+        assert_eq!(err.msg, "fail to get paste");
     });
 }

@@ -39,3 +39,14 @@ pub fn create_paste(payload: Form<NewPaste>,
             Err(err) => err.into(),
     }
 }
+
+#[get("/pastes/<id>")]
+pub fn get_paste_by_id(id: i32, db: DB) -> Custom<JSON<Value>> {
+    match paste_serv::get_paste_by_id(id, db.conn()) {
+        Ok(paste) => Custom(Status::Ok, JSON(json!(paste))),
+        Err(_) => {
+            Custom(Status::InternalServerError,
+                   JSON(json!(error::internal_server_error("fail to get paste"))))
+        }
+    }
+}
