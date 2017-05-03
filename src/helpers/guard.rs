@@ -65,3 +65,17 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminUser {
         }
     }
 }
+
+// return true when user_id match user.user_id or admin
+pub fn has_permission(user_id: i32,
+                      user: Result<NormalUser, error::Error>,
+                      admin: Result<AdminUser, error::Error>)
+                      -> Result<(), error::Error> {
+
+    // if user_id doesn't match, we also return Forbidden with
+    // "permission denied", this is same as AdminUser.
+    if user.is_ok() && user.unwrap().user_id == user_id {
+        return Ok(());
+    }
+    admin.and(Ok(()))
+}

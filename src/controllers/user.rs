@@ -6,12 +6,13 @@ use rocket_contrib::{JSON, Value};
 use services::users as user_serv;
 
 use helpers::db::DB;
-use helpers::guard::{NormalUser, AdminUser};
+use helpers::guard::{NormalUser, AdminUser, has_permission};
 use helpers::error;
+use self::error::Error;
 
 
 #[get("/users/me")]
-pub fn me(normal_user: Result<NormalUser, error::Error>, db: DB) -> Custom<JSON<Value>> {
+pub fn me(normal_user: Result<NormalUser, Error>, db: DB) -> Custom<JSON<Value>> {
     match normal_user.and_then(|normal_user| {
                                    user_serv::get_user_by_id(normal_user.user_id, db.conn())
                                        .or(Err(error::badrequest("user not found")))
@@ -22,7 +23,7 @@ pub fn me(normal_user: Result<NormalUser, error::Error>, db: DB) -> Custom<JSON<
 }
 
 #[get("/users")]
-pub fn get_users(admin: Result<AdminUser, error::Error>, db: DB) -> Custom<JSON<Value>> {
+pub fn get_users(admin: Result<AdminUser, Error>, db: DB) -> Custom<JSON<Value>> {
     match admin.and_then(|_| {
                              user_serv::get_user_list(db.conn())
                                  .or(Err(error::internal_server_error("fail to get users")))
@@ -63,5 +64,17 @@ pub fn create_user(payload: Form<UserPayload>, db: DB) -> Custom<JSON<Value>> {
             Custom(Status::InternalServerError,
                    JSON(json!(error::internal_server_error("fail to create user"))))
         }
+    }
+}
+
+#[get("/users/<id>")]
+pub fn get_user_by_id(id: i32,
+                      user: Result<NormalUser, Error>,
+                      admin: Result<AdminUser, Error>,
+                      db: DB)
+                      -> Custom<JSON<Value>> {
+    match has_permission(id, user, admin).and_then(|_| user_serv::get_user_by_id(id, db.conn()).or(Err(error::notfound("user not found")))) {
+        Ok(user) => Custom(Status::Ok, JSON(json!(user))),
+        Err(err) => err.into(),
     }
 }

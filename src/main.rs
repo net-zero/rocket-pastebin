@@ -89,7 +89,8 @@ fn rocket() -> rocket::Rocket {
                                    auth::login,
                                    user::me,
                                    user::get_users,
-                                   user::create_user])
+                                   user::create_user,
+                                   user::get_user_by_id])
 }
 
 pub fn main() {
