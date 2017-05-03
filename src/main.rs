@@ -41,6 +41,7 @@ use paste_id::PasteID;
 
 use controllers::auth;
 use controllers::user;
+use controllers::paste;
 
 lazy_static! {
     pub static ref ENV: helpers::env::Env = helpers::env::load();
@@ -92,7 +93,9 @@ fn rocket() -> rocket::Rocket {
                                    user::create_user,
                                    user::get_user_by_id,
                                    user::update_user_by_id,
-                                   user::delete_user_by_id])
+                                   user::delete_user_by_id,
+                                   paste::get_pastes,
+                                   paste::create_paste])
 }
 
 pub fn main() {

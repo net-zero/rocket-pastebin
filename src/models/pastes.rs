@@ -1,7 +1,7 @@
 // This is required for NewPaste
 use models::schema::pastes;
 
-#[derive(Queryable)]
+#[derive(Queryable, Serialize, Deserialize)]
 #[belongs_to(User)]
 pub struct Paste {
     pub id: i32,
@@ -9,7 +9,7 @@ pub struct Paste {
     pub data: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, FromForm)]
 #[table_name="pastes"]
 pub struct NewPaste {
     pub user_id: i32,
