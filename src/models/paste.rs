@@ -1,7 +1,8 @@
 // This is required for NewPaste
 use models::schema::pastes;
+use models::user::User;
 
-#[derive(Queryable, Serialize, Deserialize, PartialEq, Debug, FromForm)]
+#[derive(Queryable, Associations, Identifiable, Serialize, Deserialize, PartialEq, Debug, FromForm)]
 #[belongs_to(User)]
 pub struct Paste {
     pub id: i32,

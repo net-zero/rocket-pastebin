@@ -5,8 +5,10 @@ use diesel::pg::PgConnection;
 
 use models::schema;
 use models::paste::*;
+use models::user::*;
 
 use self::schema::pastes;
+use self::schema::users;
 
 pub fn create_paste<'a>(paste: &'a NewPaste,
                         conn: &'a PgConnection)
@@ -33,10 +35,10 @@ pub fn get_pastes(conn: &PgConnection) -> Result<Vec<Paste>, result::Error> {
 pub fn get_pastes_by_user_id(user_id: i32,
                              conn: &PgConnection)
                              -> Result<Vec<Paste>, result::Error> {
-    pastes::table
-        .filter(pastes::user_id.eq(user_id))
-        .limit(20)
-        .load::<Paste>(conn)
+    users::table
+        .find(user_id)
+        .first::<User>(conn)
+        .and_then(|user| Paste::belonging_to(&user).limit(20).load::<Paste>(conn))
 }
 
 pub fn delete_paste(id: i32, conn: &PgConnection) -> Result<usize, result::Error> {

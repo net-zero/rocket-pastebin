@@ -1,5 +1,6 @@
 // This is required for NewUser
 use models::schema::users;
+use models::schema::pastes;
 
 #[derive(Insertable)]
 #[table_name="users"]
@@ -9,8 +10,8 @@ pub struct NewUser<'a> {
     pub password_digest: Vec<u8>,
 }
 
-#[derive(Queryable)]
-#[has_many(pastes)]
+#[derive(Queryable, Associations, Identifiable)]
+#[has_many(pastes, foreign_key="user_id")]
 pub struct User {
     pub id: i32,
     pub username: String,
