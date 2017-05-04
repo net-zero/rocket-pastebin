@@ -21,12 +21,12 @@ pub mod testdata {
     use rocket::http::Header;
 
     // services
-    use services::users::*;
-    use services::pastes::*;
+    use services::user::*;
+    use services::paste::*;
     use services::auth::JwtClaims;
 
     // models
-    use models::pastes::*;
+    use models::paste::*;
     use models::schema::*;
 
     use DB_POOL;

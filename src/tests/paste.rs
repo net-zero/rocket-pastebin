@@ -8,7 +8,7 @@ use serde_json;
 
 use helpers::error::Error;
 
-use models::pastes::{Paste, NewPaste};
+use models::paste::{Paste, NewPaste};
 
 use tests::helpers;
 use self::helpers::testdata;

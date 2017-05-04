@@ -1,7 +1,7 @@
 use jwt::{encode, Header};
 use jwt::errors;
 
-use services::users::User;
+use services::user::User;
 use ENV;
 
 #[derive(Serialize, Deserialize)]

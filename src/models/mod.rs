@@ -2,5 +2,5 @@ pub mod schema {
     infer_schema!("dotenv:DATABASE_URL");
 }
 
-pub mod users;
-pub mod pastes;
+pub mod user;
+pub mod paste;

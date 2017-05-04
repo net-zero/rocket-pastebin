@@ -3,7 +3,7 @@ use rocket::response::status;
 use rocket::http::Status;
 use rocket_contrib::{JSON, Value};
 
-use services::users;
+use services::user as user_serv;
 use services::auth;
 use helpers::db::DB;
 use helpers::error;
@@ -21,7 +21,7 @@ pub fn login(payload: Form<LoginPayload>, db: DB) -> status::Custom<JSON<Value>>
     let username = &payload.get().username;
     let password = &payload.get().password;
 
-    let result = users::get_user_by_name(username, db.conn())
+    let result = user_serv::get_user_by_name(username, db.conn())
         .or(Err(&user_error))
         .and_then(|user| match user.verify_password(password) {
                       true => Ok(user),

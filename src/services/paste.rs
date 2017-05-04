@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
 use models::schema;
-use models::pastes::*;
+use models::paste::*;
 
 use self::schema::pastes;
 

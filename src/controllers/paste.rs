@@ -3,8 +3,8 @@ use rocket::http::Status;
 use rocket::response::status::Custom;
 use rocket_contrib::{JSON, Value};
 
-use services::pastes as paste_serv;
-use models::pastes::{Paste, NewPaste};
+use services::paste as paste_serv;
+use models::paste::{Paste, NewPaste};
 
 use helpers::db::DB;
 use helpers::guard::{NormalUser, AdminUser, has_permission};

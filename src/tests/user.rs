@@ -8,7 +8,7 @@ use serde_json;
 
 use helpers::error::Error;
 
-use services::users::User;
+use services::user::User;
 use controllers::user::UserPayload;
 
 use tests::helpers;

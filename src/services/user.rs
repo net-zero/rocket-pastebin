@@ -8,7 +8,7 @@ use diesel::pg::PgConnection;
 
 use helpers::digest;
 use models::schema;
-use models::users::{User as ModelUser, NewUser as ModelNewUser};
+use models::user::{User as ModelUser, NewUser as ModelNewUser};
 
 use self::schema::users;
 

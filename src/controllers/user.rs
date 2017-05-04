@@ -3,7 +3,7 @@ use rocket::http::Status;
 use rocket::response::status::Custom;
 use rocket_contrib::{JSON, Value};
 
-use services::users as user_serv;
+use services::user as user_serv;
 
 use helpers::db::DB;
 use helpers::guard::{NormalUser, AdminUser, has_permission};

@@ -1,3 +1,3 @@
-pub mod users;
-pub mod pastes;
+pub mod user;
+pub mod paste;
 pub mod auth;
