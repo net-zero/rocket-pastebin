@@ -23,8 +23,7 @@ fn test_get_pastes() {
     } = testdata::recreate();
     let rocket = rocket();
 
-    let mut req = MockRequest::new(Get, "/pastes");
-    req.add_header(admin_header);
+    let req = req!(Get, "/pastes", admin_header);
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
@@ -33,8 +32,7 @@ fn test_get_pastes() {
     });
 
     // normal user token
-    let mut req = MockRequest::new(Get, "/pastes");
-    req.add_header(normal_header);
+    let req = req!(Get, "/pastes", normal_header);
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
@@ -42,33 +40,17 @@ fn test_get_pastes() {
         assert_eq!(err.msg, "permission denied");
     });
 
-    // without token
-    let req = MockRequest::new(Get, "/pastes");
-    run_test!(&rocket, req, |mut response: Response| {
-        let body = body_string!(response);
-        let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::Unauthorized.code);
-        assert_eq!(err.msg, "token not found");
-    });
-
-    // invalid token
-    let wrong_token = Header::new("Authorization", "Bearer wrongtoken");
-    let mut req = MockRequest::new(Get, "/pastes");
-    req.add_header(wrong_token);
-    run_test!(&rocket, req, |mut response: Response| {
-        let body = body_string!(response);
-        let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::Unauthorized.code);
-        assert_eq!(err.msg, "invalid token");
-    });
+    trivial_token_tests!(&rocket, MockRequest::new(Get, "/pastes"));
 }
 
 macro_rules! create_paste_req {
-    ($new_paste: expr) => (
-        MockRequest::new(Post, "/pastes")
-        .header(ContentType::Form)
-        .body(&format!("user_id={}&data={}",$new_paste.user_id, $new_paste.data));
-    )
+    ($new_paste: expr, $header: expr) => ({
+        let mut req = MockRequest::new(Post, "/pastes")
+            .header(ContentType::Form)
+            .body(&format!("user_id={}&data={}",$new_paste.user_id, $new_paste.data));
+        req.add_header($header);
+        req
+    })
 }
 
 #[test]
@@ -84,8 +66,7 @@ fn test_create_paste() {
         data: "test new paste".to_string(),
     };
 
-    let mut req = create_paste_req!(new_paste);
-    req.add_header(normal_header.clone());
+    let req = create_paste_req!(new_paste, normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let paste: Paste = serde_json::from_str(&body).unwrap();
@@ -95,14 +76,16 @@ fn test_create_paste() {
 
     // user_id doesn't match with token
     new_paste.user_id = -1;
-    let mut req = create_paste_req!(new_paste);
-    req.add_header(normal_header.clone());
+    let req = create_paste_req!(new_paste, normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::BadRequest.code);
         assert_eq!(err.msg, "user_id doesn't match jwt token");
     });
+
+    let dummy_header = Header::new("dummy", "dummy");
+    trivial_token_tests!(&rocket, create_paste_req!(new_paste, dummy_header.clone()));
 }
 
 #[test]
@@ -128,14 +111,16 @@ fn test_get_paste_by_id() {
 }
 
 macro_rules! update_paste_req {
-    ($updated_paste: expr, $endpoint: expr) => (
-        MockRequest::new(Put, $endpoint)
-        .header(ContentType::Form)
-        .body(&format!("id={}&user_id={}&data={}",
-                       $updated_paste.id,
-                       $updated_paste.user_id,
-                       $updated_paste.data));
-    )
+    ($updated_paste: expr, $endpoint: expr, $header: expr) => ({
+        let mut req = MockRequest::new(Put, $endpoint)
+            .header(ContentType::Form)
+            .body(&format!("id={}&user_id={}&data={}",
+                           $updated_paste.id,
+                           $updated_paste.user_id,
+                           $updated_paste.data));
+        req.add_header($header);
+        req
+    })
 }
 
 #[test]
@@ -154,8 +139,7 @@ fn test_update_paste_by_id() {
     };
 
     let endpoint = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
-    let mut req = update_paste_req!(updated_paste, endpoint.clone());
-    req.add_header(normal_header.clone());
+    let req = update_paste_req!(updated_paste, &endpoint, normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let paste: Paste = serde_json::from_str(&body).unwrap();
@@ -164,8 +148,7 @@ fn test_update_paste_by_id() {
 
     // update using admin permission
     updated_paste.data = "update paste by admin".to_string();
-    let mut req = update_paste_req!(updated_paste, endpoint.clone());
-    req.add_header(admin_header.clone());
+    let req = update_paste_req!(updated_paste, &endpoint, admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let paste: Paste = serde_json::from_str(&body).unwrap();
@@ -174,8 +157,7 @@ fn test_update_paste_by_id() {
 
     // user_id doesn't match
     updated_paste.user_id = -1;
-    let mut req = update_paste_req!(updated_paste, endpoint.clone());
-    req.add_header(admin_header.clone());
+    let req = update_paste_req!(updated_paste, &endpoint, admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
@@ -186,14 +168,17 @@ fn test_update_paste_by_id() {
     // paste id doesn't match
     updated_paste.user_id = test_paste.id;
     updated_paste.id = -1;
-    let mut req = update_paste_req!(updated_paste, endpoint.clone());
-    req.add_header(admin_header.clone());
+    let req = update_paste_req!(updated_paste, &endpoint, admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::BadRequest.code);
         assert_eq!(err.msg, "user_id or paste id doesn't match");
     });
+
+    let dummy_header = Header::new("dummy", "dummy");
+    trivial_token_tests!(&rocket,
+                         update_paste_req!(updated_paste, &endpoint, dummy_header.clone()));
 }
 
 #[test]
@@ -207,27 +192,18 @@ fn test_delete_paste_by_id() {
     let rocket = rocket();
 
     let endpoint = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
-    let mut req = MockRequest::new(Delete, endpoint.clone());
+    let mut req = MockRequest::new(Delete, &endpoint);
     req.add_header(normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         body.contains("1");
     });
 
-    // other user's paste
-    let mut req = MockRequest::new(Delete, "/users/-1/pastes/-1");
-    req.add_header(normal_header.clone());
-    run_test!(&rocket, req, |mut response: Response| {
-        let body = body_string!(response);
-        let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::Forbidden.code);
-        assert_eq!(err.msg, "permission denied");
-    });
+    trivial_token_tests!(&rocket, MockRequest::new(Delete, "/users/-1/pastes/-1"));
 
-    // use admin permission
-    let mut req = MockRequest::new(Delete, "/users/-1/pastes/-1");
-    req.add_header(admin_header.clone());
-    run_test!(&rocket, req, |mut response: Response| {
+    let admin_req = req!(Delete, "/users/-1/pastes/-1", admin_header.clone());
+    let normal_req = req!(Delete, "/users/-1/pastes/-1", normal_header.clone());
+    trivial_perm_tests!(&rocket, normal_req, admin_req, |mut response: Response| {
         let body = body_string!(response);
         body.contains("0");
     });
@@ -245,8 +221,7 @@ fn test_get_pastes_by_user_id() {
     let rocket = rocket();
 
     let endpoint = format!("/users/{}/pastes", user.id);
-    let mut req = MockRequest::new(Get, endpoint.clone());
-    req.add_header(normal_header.clone());
+    let req = req!(Get, &endpoint, normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
@@ -254,24 +229,14 @@ fn test_get_pastes_by_user_id() {
         assert_eq!(pastes[0], test_paste);
     });
 
-    // user admin permission
-    let mut req = MockRequest::new(Get, endpoint.clone());
-    req.add_header(admin_header.clone());
-    run_test!(&rocket, req, |mut response: Response| {
+    trivial_token_tests!(&rocket, MockRequest::new(Get, &endpoint));
+
+    let admin_req = req!(Get, &endpoint, admin_header.clone());
+    let normal_req = req!(Get, "/users/-1/pastes", normal_header.clone());
+    trivial_perm_tests!(&rocket, normal_req, admin_req, |mut response: Response| {
         let body = body_string!(response);
         let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
         assert_eq!(pastes.len(), 1);
         assert_eq!(pastes[0], test_paste);
-    });
-
-    // other user_id without permission
-    let endpoint = format!("/users/{}/pastes", -1);
-    let mut req = MockRequest::new(Get, endpoint.clone());
-    req.add_header(normal_header.clone());
-    run_test!(&rocket, req, |mut response: Response| {
-        let body = body_string!(response);
-        let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::Forbidden.code);
-        assert_eq!(err.msg, "permission denied");
     });
 }
