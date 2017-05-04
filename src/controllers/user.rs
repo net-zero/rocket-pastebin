@@ -49,7 +49,6 @@ pub fn create_user(payload: Form<UserPayload>, db: DB) -> Custom<JSON<Value>> {
             password: &payload.password,
         };
 
-        // TODO: detail error instead of InternalServerError, for example, duplicate username
         call_serv!(user_serv::create_user(&new_user, db.conn()))
     })
 }

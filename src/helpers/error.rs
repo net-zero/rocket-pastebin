@@ -7,6 +7,7 @@ use rocket::response::status::Custom;
 use rocket_contrib::{JSON, Value};
 
 use diesel::result::Error as DieselError;
+use diesel::result::DatabaseErrorKind;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
@@ -39,9 +40,24 @@ impl From<Error> for Custom<JSON<Value>> {
 
 impl From<DieselError> for Error {
     fn from(err: DieselError) -> Error {
+        let default_error = internal_server_error("database operation failure");
+
         match err {
             DieselError::NotFound => notfound("data not found"),
-            _ => internal_server_error("database operation failure"),
+            DieselError::DatabaseError(kind, info) => {
+                match kind {
+                    DatabaseErrorKind::UniqueViolation => {
+                        // [table_name]_column_[key]
+                        let mut name = info.constraint_name().or(Some("data")).unwrap();
+                        let table_name = info.table_name().or(Some("table")).unwrap();
+                        name = name.trim_left_matches(&format!("{}_", table_name));
+                        name = name.trim_right_matches("_key");
+                        badrequest(&format!("duplicate {}", name))
+                    }
+                    _ => default_error,
+                }
+            }
+            _ => default_error,
         }
     }
 }

@@ -116,8 +116,19 @@ fn test_create_user() {
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::InternalServerError.code);
-        assert_eq!(err.msg, "database operation failure");
+        assert_eq!(err.code, Status::BadRequest.code);
+        assert_eq!(err.msg, "duplicate username");
+    });
+
+    // duplicate email
+    new_user.username = "justnewuser".to_string();
+    new_user.email = testdata::TEST_USER.email.to_string();
+    let req = create_user_req!(new_user);
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::BadRequest.code);
+        assert_eq!(err.msg, "duplicate email");
     });
 }
 
