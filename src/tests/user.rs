@@ -153,7 +153,7 @@ fn test_create_user() {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::InternalServerError.code);
-        assert_eq!(err.msg, "fail to create user");
+        assert_eq!(err.msg, "database operation failure");
     });
 }
 
@@ -216,8 +216,8 @@ fn test_get_user_by_id() {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
         assert_eq!(err.code, Status::NotFound.code);
-        assert_eq!(err.msg, "user not found");
-    })
+        assert_eq!(err.msg, "data not found");
+    });
 }
 
 macro_rules! update_user_req {
@@ -288,8 +288,8 @@ fn test_update_user_by_id() {
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::InternalServerError.code);
-        assert_eq!(err.msg, "fail to update user");
+        assert_eq!(err.code, Status::NotFound.code);
+        assert_eq!(err.msg, "data not found");
     })
 }
 

@@ -1,10 +1,12 @@
 use std::fmt;
 use std::error;
-use std::convert::Into;
+use std::convert::From;
 
 use rocket::http::Status;
 use rocket::response::status::Custom;
 use rocket_contrib::{JSON, Value};
+
+use diesel::result::Error as DieselError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
@@ -28,11 +30,19 @@ impl error::Error for Error {
     }
 }
 
-impl Into<Custom<JSON<Value>>> for Error {
-    fn into(self) -> Custom<JSON<Value>> {
-        let code = self.code;
-        let status = Status::from_code(code).unwrap_or(Status::new(code, "custom code"));
-        Custom(status, JSON(json!(self)))
+impl From<Error> for Custom<JSON<Value>> {
+    fn from(err: Error) -> Custom<JSON<Value>> {
+        let status = Status::from_code(err.code).unwrap_or(Status::new(err.code, "custom code"));
+        Custom(status, JSON(json!(err)))
+    }
+}
+
+impl From<DieselError> for Error {
+    fn from(err: DieselError) -> Error {
+        match err {
+            DieselError::NotFound => notfound("data not found"),
+            _ => internal_server_error("database operation failure"),
+        }
     }
 }
 

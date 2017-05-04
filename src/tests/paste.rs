@@ -122,8 +122,8 @@ fn test_get_paste_by_id() {
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         let err: Error = serde_json::from_str(&body).unwrap();
-        assert_eq!(err.code, Status::InternalServerError.code);
-        assert_eq!(err.msg, "fail to get paste");
+        assert_eq!(err.code, Status::NotFound.code);
+        assert_eq!(err.msg, "data not found");
     });
 }
 

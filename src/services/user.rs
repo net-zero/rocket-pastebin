@@ -1,7 +1,7 @@
 use std::convert::From;
 
 use diesel;
-use diesel::result;
+use diesel::result::Error as DieselError;
 // Must have this, otherwise .get_result is not available.
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
@@ -52,7 +52,7 @@ pub struct UpdatedUser<'a> {
     pub password: Option<&'a str>,
 }
 
-pub fn create_user<'a>(user: &'a NewUser, conn: &'a PgConnection) -> Result<User, result::Error> {
+pub fn create_user<'a>(user: &'a NewUser, conn: &'a PgConnection) -> Result<User, DieselError> {
     let new_user = ModelNewUser {
         username: user.username,
         email: &user.email.to_lowercase(),
@@ -68,7 +68,7 @@ pub fn create_user<'a>(user: &'a NewUser, conn: &'a PgConnection) -> Result<User
 pub fn update_user<'a>(id: i32,
                        updated_user: &'a UpdatedUser,
                        conn: &'a PgConnection)
-                       -> Result<User, result::Error> {
+                       -> Result<User, DieselError> {
     let mut user = users::table.find(id).get_result::<ModelUser>(conn)?;
 
     if updated_user.username.is_some() {
@@ -90,14 +90,14 @@ pub fn update_user<'a>(id: i32,
         .and_then(|user| Ok(user.into()))
 }
 
-pub fn get_user_by_id(id: i32, conn: &PgConnection) -> Result<User, result::Error> {
+pub fn get_user_by_id(id: i32, conn: &PgConnection) -> Result<User, DieselError> {
     users::table
         .find(id)
         .get_result::<ModelUser>(conn)
         .and_then(|user| Ok(user.into()))
 }
 
-pub fn get_user_by_name(username: &str, conn: &PgConnection) -> Result<User, result::Error> {
+pub fn get_user_by_name(username: &str, conn: &PgConnection) -> Result<User, DieselError> {
     users::table
         .filter(users::username.eq(username))
         .get_result::<ModelUser>(conn)
@@ -105,14 +105,14 @@ pub fn get_user_by_name(username: &str, conn: &PgConnection) -> Result<User, res
 }
 
 // TODO: paging
-pub fn get_user_list(conn: &PgConnection) -> Result<Vec<User>, result::Error> {
+pub fn get_user_list(conn: &PgConnection) -> Result<Vec<User>, DieselError> {
     users::table
         .limit(20)
         .load::<ModelUser>(conn)
         .and_then(|users| Ok(users.into_iter().map(|user| user.into()).collect()))
 }
 
-pub fn delete_user(id: i32, conn: &PgConnection) -> Result<usize, result::Error> {
+pub fn delete_user(id: i32, conn: &PgConnection) -> Result<usize, DieselError> {
     diesel::delete(users::table.filter(users::id.eq(id))).execute(conn)
 }
 
