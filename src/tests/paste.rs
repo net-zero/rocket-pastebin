@@ -195,3 +195,40 @@ fn test_update_paste_by_id() {
         assert_eq!(err.msg, "user_id or paste id doesn't match");
     });
 }
+
+#[test]
+fn test_delete_paste_by_id() {
+    let testdata::Data {
+        paste: test_paste,
+        normal_header,
+        admin_header,
+        ..
+    } = testdata::recreate();
+    let rocket = rocket();
+
+    let endpoint = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
+    let mut req = MockRequest::new(Delete, endpoint.clone());
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        body.contains("1");
+    });
+
+    // other user's paste
+    let mut req = MockRequest::new(Delete, "/users/-1/pastes/-1");
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Forbidden.code);
+        assert_eq!(err.msg, "permission denied");
+    });
+
+    // use admin permission
+    let mut req = MockRequest::new(Delete, "/users/-1/pastes/-1");
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        body.contains("0");
+    });
+}

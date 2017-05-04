@@ -71,3 +71,18 @@ pub fn update_paste_by_id(id: i32,
         Err(err) => err.into(),
     }
 }
+
+#[delete("/users/<user_id>/pastes/<id>")]
+pub fn delete_paste_by_id(id: i32,
+                          user_id: i32,
+                          user: Result<NormalUser, Error>,
+                          admin: Result<AdminUser, Error>,
+                          db: DB)
+                          -> Custom<JSON<Value>> {
+    match has_permission(user_id, user, admin).and_then(|_| {
+        paste_serv::delete_paste(id, db.conn()).or(Err(error::internal_server_error("fail to delete paste")))
+    }) {
+        Ok(del_num) => Custom(Status::Ok, JSON(json!(del_num))),
+        Err(err) => err.into(),
+    }
+}

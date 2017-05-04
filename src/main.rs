@@ -97,7 +97,8 @@ fn rocket() -> rocket::Rocket {
                                    paste::get_pastes,
                                    paste::create_paste,
                                    paste::get_paste_by_id,
-                                   paste::update_paste_by_id])
+                                   paste::update_paste_by_id,
+                                   paste::delete_paste_by_id])
 }
 
 pub fn main() {
