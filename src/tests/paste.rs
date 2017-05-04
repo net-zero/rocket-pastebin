@@ -153,8 +153,8 @@ fn test_update_paste_by_id() {
         data: "test updated paste".to_string(),
     };
 
-    let endpont = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
-    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    let endpoint = format!("/users/{}/pastes/{}", test_paste.user_id, test_paste.id);
+    let mut req = update_paste_req!(updated_paste, endpoint.clone());
     req.add_header(normal_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
@@ -164,7 +164,7 @@ fn test_update_paste_by_id() {
 
     // update using admin permission
     updated_paste.data = "update paste by admin".to_string();
-    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    let mut req = update_paste_req!(updated_paste, endpoint.clone());
     req.add_header(admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
@@ -174,7 +174,7 @@ fn test_update_paste_by_id() {
 
     // user_id doesn't match
     updated_paste.user_id = -1;
-    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    let mut req = update_paste_req!(updated_paste, endpoint.clone());
     req.add_header(admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
@@ -186,7 +186,7 @@ fn test_update_paste_by_id() {
     // paste id doesn't match
     updated_paste.user_id = test_paste.id;
     updated_paste.id = -1;
-    let mut req = update_paste_req!(updated_paste, endpont.clone());
+    let mut req = update_paste_req!(updated_paste, endpoint.clone());
     req.add_header(admin_header.clone());
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
@@ -230,5 +230,48 @@ fn test_delete_paste_by_id() {
     run_test!(&rocket, req, |mut response: Response| {
         let body = body_string!(response);
         body.contains("0");
+    });
+}
+
+#[test]
+fn test_get_pastes_by_user_id() {
+    let testdata::Data {
+        user,
+        paste: test_paste,
+        admin_header,
+        normal_header,
+        ..
+    } = testdata::recreate();
+    let rocket = rocket();
+
+    let endpoint = format!("/users/{}/pastes", user.id);
+    let mut req = MockRequest::new(Get, endpoint.clone());
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
+        assert_eq!(pastes.len(), 1);
+        assert_eq!(pastes[0], test_paste);
+    });
+
+    // user admin permission
+    let mut req = MockRequest::new(Get, endpoint.clone());
+    req.add_header(admin_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let pastes: Vec<Paste> = serde_json::from_str(&body).unwrap();
+        assert_eq!(pastes.len(), 1);
+        assert_eq!(pastes[0], test_paste);
+    });
+
+    // other user_id without permission
+    let endpoint = format!("/users/{}/pastes", -1);
+    let mut req = MockRequest::new(Get, endpoint.clone());
+    req.add_header(normal_header.clone());
+    run_test!(&rocket, req, |mut response: Response| {
+        let body = body_string!(response);
+        let err: Error = serde_json::from_str(&body).unwrap();
+        assert_eq!(err.code, Status::Forbidden.code);
+        assert_eq!(err.msg, "permission denied");
     });
 }

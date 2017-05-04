@@ -51,6 +51,20 @@ pub fn get_paste_by_id(id: i32, db: DB) -> Custom<JSON<Value>> {
     }
 }
 
+#[get("/users/<user_id>/pastes")]
+pub fn get_pastes_by_user_id(user_id: i32,
+                             user: Result<NormalUser, Error>,
+                             admin: Result<AdminUser, Error>,
+                             db: DB)
+                             -> Custom<JSON<Value>> {
+    match has_permission(user_id, user, admin).and_then(|_| {
+        paste_serv::get_pastes_by_user_id(user_id, db.conn()).or(Err(error::internal_server_error("fail to get pastes")))
+    }) {
+        Ok(pastes) => Custom(Status::Ok, JSON(json!(pastes))),
+        Err(err) => err.into(),
+    }
+}
+
 #[put("/users/<user_id>/pastes/<id>", data = "<payload>")]
 pub fn update_paste_by_id(id: i32,
                           user_id: i32,
