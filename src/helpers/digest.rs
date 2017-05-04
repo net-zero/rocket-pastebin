@@ -18,10 +18,7 @@ pub fn digest_password(username: &str, password: &str) -> Vec<u8> {
     Vec::from(&credential as &[u8])
 }
 
-pub fn verify_password(username: &str,
-                       stored_password: &Vec<u8>,
-                       attempted_password: &str)
-                       -> bool {
+pub fn verify_password(username: &str, stored_password: &[u8], attempted_password: &str) -> bool {
     let salt = salt(username);
     pbkdf2::verify(PBKDF2_PRF,
                    PBKDF2_ITER,

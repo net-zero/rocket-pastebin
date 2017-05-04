@@ -51,15 +51,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for AdminUser {
     fn from_request(req: &'a Request<'r>) -> Outcome<Self, Self::Error> {
         match get_claims!(req) {
             Ok(claims) => {
-                match claims.admin {
-                    true => {
-                        Success(AdminUser {
-                                    user_id: claims.user_id,
-                                    username: claims.username,
-                                })
-                    }
-                    false => Failure((Status::Forbidden, error::forbidden("permission denied"))),
+                if claims.admin {
+                    return Success(AdminUser {
+                                       user_id: claims.user_id,
+                                       username: claims.username,
+                                   });
                 }
+                Failure((Status::Forbidden, error::forbidden("permission denied")))
             }
             Err(err) => Failure(err),
         }

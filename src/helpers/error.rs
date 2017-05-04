@@ -33,7 +33,8 @@ impl error::Error for Error {
 
 impl From<Error> for Custom<JSON<Value>> {
     fn from(err: Error) -> Custom<JSON<Value>> {
-        let status = Status::from_code(err.code).unwrap_or(Status::new(err.code, "custom code"));
+        let status =
+            Status::from_code(err.code).unwrap_or_else(|| Status::new(err.code, "custom code"));
         Custom(status, JSON(json!(err)))
     }
 }

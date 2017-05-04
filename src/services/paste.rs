@@ -20,7 +20,7 @@ pub fn create_paste<'a>(paste: &'a NewPaste,
 
 pub fn update_paste(paste: Paste, conn: &PgConnection) -> Result<Paste, result::Error> {
     diesel::update(pastes::table.find(paste.id))
-        .set((pastes::data.eq(paste.data)))
+        .set(pastes::data.eq(paste.data))
         .get_result(conn)
 }
 
