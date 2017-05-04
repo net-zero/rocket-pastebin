@@ -122,8 +122,6 @@ pub fn delete_user(id: i32, conn: &PgConnection) -> Result<usize, result::Error>
 mod tests {
     use super::*;
     use diesel::pg::PgConnection;
-    use r2d2::Pool;
-    use r2d2_diesel::ConnectionManager;
 
     use DB_POOL;
     use tests::helpers::testdata;

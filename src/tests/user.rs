@@ -235,12 +235,11 @@ macro_rules! update_user_req {
 #[test]
 fn test_update_user_by_id() {
     let test_user = testdata::recreate().user;
-    let mut endpoint = format!("/users/{}", test_user.id);
     let normal_token = testdata::normal_user_auth_token(test_user.id, &test_user.username);
     let normal_header = Header::new("Authorization", "Bearer ".to_string() + &normal_token);
     let admin_token = testdata::admin_user_auth_token(1, "admin");
     let admin_header = Header::new("Authorization", "Bearer ".to_string() + &admin_token);
-    let mut updated_user =
+    let updated_user =
         ("update_user", "update_user@exmaple.com", "updated_password", "updated_password");
     let rocket = rocket();
 

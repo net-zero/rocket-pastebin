@@ -49,8 +49,6 @@ pub fn delete_paste(id: i32, conn: &PgConnection) -> Result<usize, result::Error
 mod tests {
     use super::*;
     use diesel::pg::PgConnection;
-    use r2d2::Pool;
-    use r2d2_diesel::ConnectionManager;
 
     use DB_POOL;
     use tests::helpers::testdata;
@@ -69,8 +67,8 @@ mod tests {
         };
         let paste = create_paste(&new_paste, conn).unwrap();
 
-        assert_eq!(new_paste.user_id, user_id);
-        assert_eq!(new_paste.data, paste_data);
+        assert_eq!(paste.user_id, new_paste.user_id);
+        assert_eq!(paste.data, new_paste.data);
     }
 
     #[test]
