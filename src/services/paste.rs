@@ -51,8 +51,8 @@ mod tests {
     use diesel::pg::PgConnection;
 
     use DB_POOL;
-    use tests::helpers::testdata;
 
+    use tests::helpers::testdata;
 
     #[test]
     fn test_create_paste() {

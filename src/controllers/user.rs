@@ -1,27 +1,31 @@
+use rocket::State;
 use rocket::request::Form;
 use rocket::http::Status;
 use rocket::response::status::Custom;
 use rocket_contrib::{JSON, Value};
 
+use DBPool;
+
 use services::user as user_serv;
 
-use helpers::db::DB;
 use helpers::guard::{NormalUser, AdminUser, check_perm};
 use helpers::error;
 use self::error::Error;
 
 
 #[get("/users/me")]
-pub fn me(user: Result<NormalUser, Error>, db: DB) -> Custom<JSON<Value>> {
+pub fn me(user: Result<NormalUser, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
     call_ctrl!(user, |perm: Result<NormalUser, Error>| {
-        perm.and_then(|user| call_serv!(user_serv::get_user_by_id(user.user_id, db.conn())))
+        perm.and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
+            .and_then(|(user, conn)| call_serv!(user_serv::get_user_by_id(user.user_id, &conn)))
     })
 }
 
 #[get("/users")]
-pub fn get_users(admin: Result<AdminUser, Error>, db: DB) -> Custom<JSON<Value>> {
+pub fn get_users(admin: Result<AdminUser, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
     call_ctrl!(admin, |perm: Result<AdminUser, Error>| {
-        perm.and_then(|_| call_serv!(user_serv::get_user_list(db.conn())))
+        perm.and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
     })
 }
 
@@ -35,7 +39,7 @@ pub struct UserPayload {
 
 
 #[post("/users", data = "<payload>")]
-pub fn create_user(payload: Form<UserPayload>, db: DB) -> Custom<JSON<Value>> {
+pub fn create_user(payload: Form<UserPayload>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
     call_ctrl!(Ok(()), |_: Result<(), Error>| {
         let payload = payload.into_inner();
         if payload.password != payload.confirm_password {
@@ -49,7 +53,7 @@ pub fn create_user(payload: Form<UserPayload>, db: DB) -> Custom<JSON<Value>> {
             password: &payload.password,
         };
 
-        call_serv!(user_serv::create_user(&new_user, db.conn()))
+        get_conn!(db_pool).and_then(|conn| call_serv!(user_serv::create_user(&new_user, &conn)))
     })
 }
 
@@ -57,10 +61,11 @@ pub fn create_user(payload: Form<UserPayload>, db: DB) -> Custom<JSON<Value>> {
 pub fn get_user_by_id(id: i32,
                       user: Result<NormalUser, Error>,
                       admin: Result<AdminUser, Error>,
-                      db: DB)
+                      db_pool: State<DBPool>)
                       -> Custom<JSON<Value>> {
     call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
-        perm.and_then(|_| call_serv!(user_serv::get_user_by_id(id, db.conn())))
+        perm.and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
     })
 }
 
@@ -77,7 +82,7 @@ pub fn update_user_by_id(id: i32,
                          payload: Form<UpdatePayload>,
                          user: Result<NormalUser, Error>,
                          admin: Result<AdminUser, Error>,
-                         db: DB)
+                         db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
     call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
         perm.and_then(|_| {
@@ -97,7 +102,11 @@ pub fn update_user_by_id(id: i32,
                     .map(|password| password.as_ref()),
             };
 
-            call_serv!(user_serv::update_user(id, &updated_user, db.conn()))
+            get_conn!(db_pool).and_then(|conn| {
+                                            call_serv!(user_serv::update_user(id,
+                                                                              &updated_user,
+                                                                              &conn))
+                                        })
         })
     })
 }
@@ -106,9 +115,10 @@ pub fn update_user_by_id(id: i32,
 pub fn delete_user_by_id(id: i32,
                          user: Result<NormalUser, Error>,
                          admin: Result<AdminUser, Error>,
-                         db: DB)
+                         db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
     call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
-        perm.and_then(|_| call_serv!(user_serv::delete_user(id, db.conn())))
+        perm.and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
     })
 }

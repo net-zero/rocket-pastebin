@@ -123,8 +123,9 @@ mod tests {
     use super::*;
     use diesel::pg::PgConnection;
 
-    use DB_POOL;
     use tests::helpers::testdata;
+
+    use DB_POOL;
 
     #[test]
     fn test_create_user() {
@@ -192,7 +193,6 @@ mod tests {
     #[test]
     fn test_get_user_by_id() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
-
         let user = testdata::recreate().user;
         let fetched_user = get_user_by_id(user.id, conn).unwrap();
 
@@ -205,7 +205,6 @@ mod tests {
     #[test]
     fn test_get_user_by_name() {
         let conn: &PgConnection = &DB_POOL.get().unwrap();
-
         let user = testdata::recreate().user;
         let fetched_user = get_user_by_name(user.username.as_ref(), conn).unwrap();
 

@@ -25,6 +25,7 @@ use r2d2_diesel::ConnectionManager;
 
 mod models;
 mod services;
+#[macro_use]
 mod helpers;
 mod controllers;
 #[cfg(test)]
@@ -38,22 +39,25 @@ lazy_static! {
     pub static ref ENV: helpers::env::Env = helpers::env::load();
     pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = helpers::db::create_db_pool();
 }
+pub struct DBPool(Pool<ConnectionManager<PgConnection>>);
 
 fn rocket() -> rocket::Rocket {
-    rocket::ignite().mount("/",
-                           routes![auth::login,
-                                   user::me,
-                                   user::get_users,
-                                   user::create_user,
-                                   user::get_user_by_id,
-                                   user::update_user_by_id,
-                                   user::delete_user_by_id,
-                                   paste::get_pastes,
-                                   paste::create_paste,
-                                   paste::get_paste_by_id,
-                                   paste::update_paste_by_id,
-                                   paste::delete_paste_by_id,
-                                   paste::get_pastes_by_user_id])
+    rocket::ignite()
+        .mount("/",
+               routes![auth::login,
+                       user::me,
+                       user::get_users,
+                       user::create_user,
+                       user::get_user_by_id,
+                       user::update_user_by_id,
+                       user::delete_user_by_id,
+                       paste::get_pastes,
+                       paste::create_paste,
+                       paste::get_paste_by_id,
+                       paste::update_paste_by_id,
+                       paste::delete_paste_by_id,
+                       paste::get_pastes_by_user_id])
+        .manage(DBPool(DB_POOL.clone()))
 }
 
 pub fn main() {
