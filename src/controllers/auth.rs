@@ -1,5 +1,5 @@
 use rocket::request::Form;
-use rocket::response::status;
+use rocket::response::status::Custom;
 use rocket::http::Status;
 use rocket_contrib::{JSON, Value};
 
@@ -7,6 +7,7 @@ use services::user as user_serv;
 use services::auth;
 use helpers::db::DB;
 use helpers::error;
+use helpers::error::Error;
 
 #[derive(FromForm)]
 pub struct LoginPayload {
@@ -15,27 +16,29 @@ pub struct LoginPayload {
 }
 
 #[post("/login", data = "<payload>")]
-pub fn login(payload: Form<LoginPayload>, db: DB) -> status::Custom<JSON<Value>> {
+pub fn login(payload: Form<LoginPayload>, db: DB) -> Custom<JSON<Value>> {
     let user_error = error::badrequest("wrong username or password");
     let jwt_error = error::internal_server_error("fail to generate jwt token");
-    let username = &payload.get().username;
-    let password = &payload.get().password;
+    let payload = payload.into_inner();
 
-    let result = user_serv::get_user_by_name(username, db.conn())
-        .or(Err(&user_error))
-        .and_then(|user| match user.verify_password(password) {
-                      true => Ok(user),
-                      false => Err(&user_error),
-                  })
-        .and_then(|user| auth::login(&user).or(Err(&jwt_error)));
-
-    match result {
-        Ok(token) => {
-            let res = JSON(json!({
-                                     "token": token
-                                 }));
-            status::Custom(Status::Ok, res)
-        }
-        Err(err) => status::Custom(Status::BadRequest, JSON(json!(err))),
-    }
+    call_ctrl!(Ok(()), |_: Result<(), Error>| {
+        call_serv!(user_serv::get_user_by_name(&payload.username, db.conn()))
+            .or_else(|err| {
+                         if err.code == Status::NotFound.code {
+                             return Err(user_error.clone());
+                         }
+                         Err(err)
+                     })
+            .and_then(|user| {
+                          if !user.verify_password(&payload.password) {
+                              return Err(user_error.clone());
+                          }
+                          Ok(user)
+                      })
+            .and_then(|user| {
+                          auth::login(&user)
+                              .or_else(|_| Err(jwt_error))
+                              .and_then(|token| Ok(format!("token: {}", token)))
+                      })
+    })
 }

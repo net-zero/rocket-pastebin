@@ -9,7 +9,7 @@ use rocket_contrib::{JSON, Value};
 use diesel::result::Error as DieselError;
 use diesel::result::DatabaseErrorKind;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Error {
     pub code: u16,
     pub msg: String,
