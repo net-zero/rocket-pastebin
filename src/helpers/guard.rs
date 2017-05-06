@@ -16,11 +16,22 @@ macro_rules! get_claims {
         .get_one("Authorization")
         .ok_or((Status::Unauthorized, error::unauthorized("token not found")))
         .and_then(|bearer_token| {
+            let mut validation = Validation::default();
+            // relax 'exp' validation by 10 seconds, so we can use 'exp' in past
+            // to test code.
+            if ENV.test_expired_token {
+                validation.leeway = 1000 * 10;
+            }
             decode::<JwtClaims>(&bearer_token.trim_left_matches("Bearer "),
                                 ENV.jwt_secret.as_ref(),
-                                &Validation::default())
+                                &validation)
                 .or(Err((Status::Unauthorized, error::unauthorized("invalid token"))))
-                .and_then(|data| Ok(data.claims))
+                .and_then(|data| {
+                    if data.claims.is_expired() {
+                        return Err((Status::Unauthorized, error::unauthorized("expired token")));
+                    }
+                    Ok(data.claims)
+                })
         });
     )
 }

@@ -39,6 +39,17 @@ macro_rules! trivial_token_tests {
             assert_eq!(err.code, Status::Unauthorized.code);
             assert_eq!(err.msg, "invalid token");
         });
+
+        // expired token test
+        let expired_token = Header::new("Authorization", format!("Bearer {}", testdata::expired_token()));
+        let mut req = $req;
+        req.add_header(expired_token);
+        run_test!($rocket, req, |mut response: Response| {
+            let body = body_string!(response);
+            let err: Error = serde_json::from_str(&body).unwrap();
+            assert_eq!(err.code, Status::Unauthorized.code);
+            assert_eq!(err.msg, "expired token");
+        });
     )
 }
 
@@ -69,6 +80,8 @@ pub mod testdata {
 
     use rocket::http::Header;
 
+    use time;
+
     // services
     use services::user::*;
     use services::paste::*;
@@ -80,6 +93,8 @@ pub mod testdata {
 
     use DB_POOL;
     use ENV;
+
+    const DAY: i64 = 60 * 60 * 24;
 
     pub const TEST_USER: NewUser = NewUser {
         username: "test",
@@ -147,7 +162,10 @@ pub mod testdata {
     }
 
     pub fn normal_user_auth_token(user_id: i32, username: &str) -> String {
+        let now = time::get_time().sec;
         let claims = JwtClaims {
+            iat: now,
+            exp: now + 7 * DAY,
             user_id,
             username: username.to_string(),
             admin: false,
@@ -157,10 +175,26 @@ pub mod testdata {
     }
 
     pub fn admin_user_auth_token(user_id: i32, username: &str) -> String {
+        let now = time::get_time().sec;
         let claims = JwtClaims {
+            iat: now,
+            exp: now + 7 * DAY,
             user_id,
             username: username.to_string(),
             admin: true,
+        };
+        let jwt_secret: &str = ENV.jwt_secret.as_ref();
+        encode(&JwtHeader::default(), &claims, jwt_secret.as_bytes()).unwrap()
+    }
+
+    pub fn expired_token() -> String {
+        let now = time::get_time().sec;
+        let claims = JwtClaims {
+            iat: now,
+            exp: now - 1,
+            user_id: 1,
+            username: "test user".to_string(),
+            admin: false,
         };
         let jwt_secret: &str = ENV.jwt_secret.as_ref();
         encode(&JwtHeader::default(), &claims, jwt_secret.as_bytes()).unwrap()

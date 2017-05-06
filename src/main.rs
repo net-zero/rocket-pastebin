@@ -18,6 +18,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate rocket_contrib;
+extern crate time;
 
 use diesel::pg::PgConnection;
 use r2d2::Pool;
