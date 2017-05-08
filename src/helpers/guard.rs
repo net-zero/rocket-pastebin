@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use rocket::Request;
 use rocket::request::{Outcome, FromRequest};
 use rocket::Outcome::{Success, Failure};
@@ -36,55 +38,49 @@ macro_rules! get_claims {
     )
 }
 
-pub struct NormalUser {
-    pub user_id: i32,
-}
+pub enum User {}
+pub enum Admin {}
 
-pub struct AdminUser {
+pub struct UserToken<Perm> {
     pub user_id: i32,
     pub username: String,
+    admin_flag: bool,
+
+    perm: PhantomData<Perm>,
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for NormalUser {
-    type Error = error::Error;
-
-    fn from_request(req: &'a Request<'r>) -> Outcome<Self, Self::Error> {
-        match get_claims!(req) {
-            Ok(claims) => Success(NormalUser { user_id: claims.user_id }),
-            Err(err) => Failure(err),
-        }
-    }
-}
-
-impl<'a, 'r> FromRequest<'a, 'r> for AdminUser {
+impl<'a, 'r, Perm> FromRequest<'a, 'r> for UserToken<Perm> {
     type Error = error::Error;
 
     fn from_request(req: &'a Request<'r>) -> Outcome<Self, Self::Error> {
         match get_claims!(req) {
             Ok(claims) => {
-                if claims.admin {
-                    return Success(AdminUser {
-                                       user_id: claims.user_id,
-                                       username: claims.username,
-                                   });
-                }
-                Failure((Status::Forbidden, error::forbidden("permission denied")))
+                Success(UserToken {
+                            user_id: claims.user_id,
+                            username: claims.username,
+                            admin_flag: claims.admin,
+                            perm: PhantomData,
+                        })
             }
             Err(err) => Failure(err),
         }
     }
 }
 
-// return true when user_id match user.user_id or admin
-pub fn check_perm(user_id: i32,
-                  user: Result<NormalUser, error::Error>,
-                  admin: Result<AdminUser, error::Error>)
-                  -> Result<(), error::Error> {
-
-    // if user_id doesn't match, we also return Forbidden with
-    // "permission denied", this is same as AdminUser.
-    if user.is_ok() && user.unwrap().user_id == user_id {
-        return Ok(());
+impl UserToken<Admin> {
+    pub fn has_perm(&self) -> Result<(), error::Error> {
+        if !self.admin_flag {
+            return Err(error::forbidden("permission denied"));
+        }
+        Ok(())
     }
-    admin.and(Ok(()))
+}
+
+impl UserToken<User> {
+    pub fn has_perm(&self, user_id: i32) -> Result<(), error::Error> {
+        if self.user_id != user_id && !self.admin_flag {
+            return Err(error::forbidden("permission denied"));
+        }
+        Ok(())
+    }
 }

@@ -8,25 +8,28 @@ use DBPool;
 
 use services::user as user_serv;
 
-use helpers::guard::{NormalUser, AdminUser, check_perm};
+use helpers::guard::{User, Admin, UserToken};
 use helpers::error;
 use self::error::Error;
 
 
 #[get("/users/me")]
-pub fn me(user: Result<NormalUser, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
-    call_ctrl!(user, |perm: Result<NormalUser, Error>| {
+pub fn me(token: Result<UserToken<User>, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
+    call_ctrl!(token, |perm: Result<UserToken<User>, Error>| {
         perm.and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
             .and_then(|(user, conn)| call_serv!(user_serv::get_user_by_id(user.user_id, &conn)))
     })
 }
 
 #[get("/users")]
-pub fn get_users(admin: Result<AdminUser, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
-    call_ctrl!(admin, |perm: Result<AdminUser, Error>| {
-        perm.and_then(|_| get_conn!(db_pool))
-            .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
-    })
+pub fn get_users(token: Result<UserToken<Admin>, Error>,
+                 db_pool: State<DBPool>)
+                 -> Custom<JSON<Value>> {
+    call_ctrl!(token.and_then(|token| token.has_perm()),
+               |perm: Result<(), Error>| {
+                   perm.and_then(|_| get_conn!(db_pool))
+                       .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
+               })
 }
 
 #[derive(FromForm)]
@@ -59,14 +62,14 @@ pub fn create_user(payload: Form<UserPayload>, db_pool: State<DBPool>) -> Custom
 
 #[get("/users/<id>")]
 pub fn get_user_by_id(id: i32,
-                      user: Result<NormalUser, Error>,
-                      admin: Result<AdminUser, Error>,
+                      token: Result<UserToken<User>, Error>,
                       db_pool: State<DBPool>)
                       -> Custom<JSON<Value>> {
-    call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
-        perm.and_then(|_| get_conn!(db_pool))
-            .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
-    })
+    call_ctrl!(token.and_then(|token| token.has_perm(id)),
+               |perm: Result<(), Error>| {
+                   perm.and_then(|_| get_conn!(db_pool))
+                       .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
+               })
 }
 
 #[derive(FromForm)]
@@ -80,11 +83,11 @@ pub struct UpdatePayload {
 #[put("/users/<id>", data = "<payload>")]
 pub fn update_user_by_id(id: i32,
                          payload: Form<UpdatePayload>,
-                         user: Result<NormalUser, Error>,
-                         admin: Result<AdminUser, Error>,
+                         token: Result<UserToken<User>, Error>,
                          db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
-    call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
+    call_ctrl!(token.and_then(|token| token.has_perm(id)),
+               |perm: Result<(), Error>| {
         perm.and_then(|_| {
             let payload = payload.into_inner();
             if payload.password.as_ref().is_some() &&
@@ -113,12 +116,12 @@ pub fn update_user_by_id(id: i32,
 
 #[delete("/users/<id>")]
 pub fn delete_user_by_id(id: i32,
-                         user: Result<NormalUser, Error>,
-                         admin: Result<AdminUser, Error>,
+                         token: Result<UserToken<User>, Error>,
                          db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
-    call_ctrl!(check_perm(id, user, admin), |perm: Result<(), Error>| {
-        perm.and_then(|_| get_conn!(db_pool))
-            .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
-    })
+    call_ctrl!(token.and_then(|token| token.has_perm(id)),
+               |perm: Result<(), Error>| {
+                   perm.and_then(|_| get_conn!(db_pool))
+                       .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
+               })
 }
