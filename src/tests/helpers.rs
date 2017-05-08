@@ -168,7 +168,7 @@ pub mod testdata {
             exp: now + 7 * DAY,
             user_id,
             username: username.to_string(),
-            admin: false,
+            roles: vec!["user".to_owned()],
         };
         let jwt_secret: &str = ENV.jwt_secret.as_ref();
         encode(&JwtHeader::default(), &claims, jwt_secret.as_bytes()).unwrap()
@@ -181,7 +181,7 @@ pub mod testdata {
             exp: now + 7 * DAY,
             user_id,
             username: username.to_string(),
-            admin: true,
+            roles: vec!["admin".to_owned(), "user".to_owned()],
         };
         let jwt_secret: &str = ENV.jwt_secret.as_ref();
         encode(&JwtHeader::default(), &claims, jwt_secret.as_bytes()).unwrap()
@@ -194,7 +194,7 @@ pub mod testdata {
             exp: now - 1,
             user_id: 1,
             username: "test user".to_string(),
-            admin: false,
+            roles: vec!["user".to_owned()],
         };
         let jwt_secret: &str = ENV.jwt_secret.as_ref();
         encode(&JwtHeader::default(), &claims, jwt_secret.as_bytes()).unwrap()

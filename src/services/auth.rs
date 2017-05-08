@@ -16,7 +16,7 @@ pub struct JwtClaims {
     pub exp: i64,
     pub user_id: i32,
     pub username: String,
-    pub admin: bool,
+    pub roles: Vec<String>,
 }
 
 impl JwtClaims {
@@ -33,7 +33,7 @@ pub fn login(user: &User) -> Result<String, errors::Error> {
         exp: now + 7 * DAY,
         user_id: user.id,
         username: user.username.clone(),
-        admin: user.admin,
+        roles: user.roles.clone(),
     };
     let jwt_secret: &str = ENV.jwt_secret.as_ref();
 

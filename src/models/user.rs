@@ -17,5 +17,5 @@ pub struct User {
     pub username: String,
     pub email: String,
     pub password_digest: Vec<u8>,
-    pub admin: bool,
+    pub roles: Vec<String>,
 }

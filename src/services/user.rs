@@ -17,7 +17,7 @@ pub struct User {
     pub id: i32,
     pub username: String,
     pub email: String,
-    pub admin: bool,
+    pub roles: Vec<String>,
     #[serde(skip_serializing, skip_deserializing)]
     password_digest: Vec<u8>,
 }
@@ -28,7 +28,7 @@ impl From<ModelUser> for User {
             id: user.id,
             username: user.username,
             email: user.email,
-            admin: user.admin,
+            roles: user.roles,
             password_digest: user.password_digest,
         }
     }
@@ -141,8 +141,8 @@ mod tests {
 
         assert_eq!(user.username, new_user.username);
         assert_eq!(user.email, new_user.email.to_lowercase().as_ref());
-        // admin flag should be false by default
-        assert_eq!(user.admin, false);
+        // default user roles contains only "user"
+        assert_eq!(user.roles, vec!["user"]);
         assert_eq!(user.verify_password(new_user.password), true);
 
         // test duplicate email

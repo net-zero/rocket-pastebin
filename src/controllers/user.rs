@@ -15,19 +15,22 @@ use self::error::Error;
 
 #[get("/users/me")]
 pub fn me(token: Result<UserToken<User>, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
-    call_ctrl!(token, |perm: Result<UserToken<User>, Error>| {
-        perm.and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
-            .and_then(|(user, conn)| call_serv!(user_serv::get_user_by_id(user.user_id, &conn)))
-    })
+    call_ctrl!(|| {
+                   token
+                       .and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
+                       .and_then(|(user, conn)| {
+                                     call_serv!(user_serv::get_user_by_id(user.user_id, &conn))
+                                 })
+               })
 }
 
 #[get("/users")]
 pub fn get_users(token: Result<UserToken<Admin>, Error>,
                  db_pool: State<DBPool>)
                  -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm()),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| get_conn!(db_pool))
+    call_ctrl!(|| {
+                   token
+                       .and_then(|_| get_conn!(db_pool))
                        .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
                })
 }
@@ -43,7 +46,7 @@ pub struct UserPayload {
 
 #[post("/users", data = "<payload>")]
 pub fn create_user(payload: Form<UserPayload>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
-    call_ctrl!(Ok(()), |_: Result<(), Error>| {
+    call_ctrl!(|| {
         let payload = payload.into_inner();
         if payload.password != payload.confirm_password {
             return Err(error::badrequest("password mismatch"));
@@ -65,9 +68,9 @@ pub fn get_user_by_id(id: i32,
                       token: Result<UserToken<User>, Error>,
                       db_pool: State<DBPool>)
                       -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(id)),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| get_conn!(db_pool))
+    call_ctrl!(|| {
+                   match_or_has_roles!(token, id, ["admin"])
+                       .and_then(|_| get_conn!(db_pool))
                        .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
                })
 }
@@ -86,9 +89,8 @@ pub fn update_user_by_id(id: i32,
                          token: Result<UserToken<User>, Error>,
                          db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(id)),
-               |perm: Result<(), Error>| {
-        perm.and_then(|_| {
+    call_ctrl!(|| {
+        match_or_has_roles!(token, id, ["admin"]).and_then(|_| {
             let payload = payload.into_inner();
             if payload.password.as_ref().is_some() &&
                (payload.confirm_password.as_ref().is_none() ||
@@ -119,9 +121,9 @@ pub fn delete_user_by_id(id: i32,
                          token: Result<UserToken<User>, Error>,
                          db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(id)),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| get_conn!(db_pool))
+    call_ctrl!(|| {
+                   match_or_has_roles!(token, id, ["admin"])
+                       .and_then(|_| get_conn!(db_pool))
                        .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
                })
 }

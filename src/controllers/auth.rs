@@ -23,7 +23,7 @@ pub fn login(payload: Form<LoginPayload>, db_pool: State<DBPool>) -> Custom<JSON
     let jwt_error = error::internal_server_error("fail to generate jwt token");
     let payload = payload.into_inner();
 
-    call_ctrl!(Ok(()), |_: Result<(), Error>| {
+    call_ctrl!(|| {
         get_conn!(db_pool)
             .and_then(|conn| call_serv!(user_serv::get_user_by_name(&payload.username, &conn)))
             .or_else(|err| {

@@ -11,6 +11,7 @@ use ENV;
 use services::auth::JwtClaims;
 
 use helpers::error;
+use self::error::Error;
 
 macro_rules! get_claims {
     ($req: expr) => (
@@ -44,13 +45,13 @@ pub enum Admin {}
 pub struct UserToken<Perm> {
     pub user_id: i32,
     pub username: String,
-    admin_flag: bool,
+    roles: Vec<String>,
 
     perm: PhantomData<Perm>,
 }
 
-impl<'a, 'r, Perm> FromRequest<'a, 'r> for UserToken<Perm> {
-    type Error = error::Error;
+impl<'a, 'r> FromRequest<'a, 'r> for UserToken<User> {
+    type Error = Error;
 
     fn from_request(req: &'a Request<'r>) -> Outcome<Self, Self::Error> {
         match get_claims!(req) {
@@ -58,7 +59,7 @@ impl<'a, 'r, Perm> FromRequest<'a, 'r> for UserToken<Perm> {
                 Success(UserToken {
                             user_id: claims.user_id,
                             username: claims.username,
-                            admin_flag: claims.admin,
+                            roles: claims.roles,
                             perm: PhantomData,
                         })
             }
@@ -67,20 +68,34 @@ impl<'a, 'r, Perm> FromRequest<'a, 'r> for UserToken<Perm> {
     }
 }
 
-impl UserToken<Admin> {
-    pub fn has_perm(&self) -> Result<(), error::Error> {
-        if !self.admin_flag {
-            return Err(error::forbidden("permission denied"));
+impl<'a, 'r> FromRequest<'a, 'r> for UserToken<Admin> {
+    type Error = Error;
+
+    fn from_request(req: &'a Request<'r>) -> Outcome<Self, Self::Error> {
+        match get_claims!(req) {
+            Ok(claims) => {
+                if !claims.roles.contains(&"admin".to_owned()) {
+                    return Failure((Status::Forbidden, error::forbidden("permission denied")));
+                }
+
+                Success(UserToken {
+                            user_id: claims.user_id,
+                            username: claims.username,
+                            roles: claims.roles,
+                            perm: PhantomData,
+                        })
+            }
+            Err(err) => Failure(err),
         }
-        Ok(())
     }
 }
 
-impl UserToken<User> {
-    pub fn has_perm(&self, user_id: i32) -> Result<(), error::Error> {
-        if self.user_id != user_id && !self.admin_flag {
-            return Err(error::forbidden("permission denied"));
-        }
-        Ok(())
+impl<Perm> UserToken<Perm> {
+    pub fn match_user_id(&self, id: i32) -> bool {
+        self.user_id == id
+    }
+
+    pub fn has_role(&self, role: &str) -> bool {
+        self.roles.contains(&role.to_owned())
     }
 }

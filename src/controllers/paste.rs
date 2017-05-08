@@ -17,9 +17,9 @@ use self::error::Error;
 pub fn get_pastes(token: Result<UserToken<Admin>, Error>,
                   db_pool: State<DBPool>)
                   -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm()),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| get_conn!(db_pool))
+    call_ctrl!(|| {
+                   token
+                       .and_then(|_| get_conn!(db_pool))
                        .and_then(|conn| call_serv!(paste_serv::get_pastes(&conn)))
                })
 }
@@ -29,8 +29,8 @@ pub fn create_paste(payload: Form<NewPaste>,
                     user: Result<UserToken<User>, Error>,
                     db_pool: State<DBPool>)
                     -> Custom<JSON<Value>> {
-    call_ctrl!(user, |perm: Result<UserToken<User>, Error>| {
-        perm.and_then(|user| {
+    call_ctrl!(|| {
+        user.and_then(|user| {
                           let payload = payload.into_inner();
                           if user.user_id != payload.user_id {
                               return Err(error::badrequest("user_id doesn't match jwt token"));
@@ -43,9 +43,12 @@ pub fn create_paste(payload: Form<NewPaste>,
 
 #[get("/pastes/<id>")]
 pub fn get_paste_by_id(id: i32, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
-    call_ctrl!(Ok(()), |_: Result<(), Error>| {
-        get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::get_paste_by_id(id, &conn)))
-    })
+    call_ctrl!(|| {
+                   get_conn!(db_pool).and_then(|conn| {
+                                                   call_serv!(paste_serv::get_paste_by_id(id,
+                                                                                          &conn))
+                                               })
+               })
 }
 
 #[get("/users/<user_id>/pastes")]
@@ -53,12 +56,12 @@ pub fn get_pastes_by_user_id(user_id: i32,
                              token: Result<UserToken<User>, Error>,
                              db_pool: State<DBPool>)
                              -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(user_id)),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| {
-                                     get_conn!(db_pool).and_then(|conn|
+    call_ctrl!(|| {
+                   match_or_has_roles!(token, user_id, ["admin"])
+            .and_then(|_| {
+                          get_conn!(db_pool).and_then(|conn|
                                      call_serv!(paste_serv::get_pastes_by_user_id(user_id, &conn)))
-                                 })
+                      })
                })
 }
 
@@ -69,16 +72,15 @@ pub fn update_paste_by_id(id: i32,
                           token: Result<UserToken<User>, Error>,
                           db_pool: State<DBPool>)
                           -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(user_id)),
-               |perm: Result<(), Error>| {
-        perm.and_then(|_| {
-                          let payload = payload.into_inner();
-                          if payload.user_id != user_id || payload.id != id {
-                              return Err(error::badrequest("user_id or paste id doesn't match"));
-                          }
+    call_ctrl!(|| {
+        match_or_has_roles!(token, user_id, ["admin"]).and_then(|_| {
+            let payload = payload.into_inner();
+            if payload.user_id != user_id || payload.id != id {
+                return Err(error::badrequest("user_id or paste id doesn't match"));
+            }
 
-                          get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::update_paste(payload, &conn)))
-                      })
+            get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::update_paste(payload, &conn)))
+        })
     })
 }
 
@@ -88,11 +90,11 @@ pub fn delete_paste_by_id(id: i32,
                           token: Result<UserToken<User>, Error>,
                           db_pool: State<DBPool>)
                           -> Custom<JSON<Value>> {
-    call_ctrl!(token.and_then(|token| token.has_perm(user_id)),
-               |perm: Result<(), Error>| {
-                   perm.and_then(|_| {
-                                     get_conn!(db_pool).and_then(|conn|
+    call_ctrl!(|| {
+                   match_or_has_roles!(token, user_id, ["admin"])
+            .and_then(|_| {
+                          get_conn!(db_pool).and_then(|conn|
                                  call_serv!(paste_serv::delete_paste(id, &conn)))
-                                 })
+                      })
                })
 }
