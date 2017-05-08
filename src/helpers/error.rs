@@ -1,5 +1,5 @@
 use std::fmt;
-use std::error;
+use std::error::Error as StdError;
 use std::convert::From;
 
 use rocket::http::Status;
@@ -21,12 +21,12 @@ impl fmt::Display for Error {
     }
 }
 
-impl error::Error for Error {
+impl StdError for Error {
     fn description(&self) -> &str {
         &self.msg
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&StdError> {
         None
     }
 }
