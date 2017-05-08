@@ -15,7 +15,7 @@ pub fn load() -> Env {
     let digest_salt = env::var("DIGEST_SALT").expect("DIGEST_SALT must be set");
     let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     let test_expired_token = match env::var("TEST_EXPIRED_TOKEN") {
-        Ok(value) => if value == "true" { true } else { false },
+        Ok(value) => value == "true",
         Err(_) => false,
     };
 
