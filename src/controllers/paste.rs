@@ -18,10 +18,10 @@ pub fn get_pastes(token: Result<UserToken<Admin>, Error>,
                   db_pool: State<DBPool>)
                   -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   token
-                       .and_then(|_| get_conn!(db_pool))
-                       .and_then(|conn| call_serv!(paste_serv::get_pastes(&conn)))
-               })
+        token
+            .and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(paste_serv::get_pastes(&conn)))
+    })
 }
 
 #[post("/pastes", data = "<payload>")]
@@ -31,24 +31,23 @@ pub fn create_paste(payload: Form<NewPaste>,
                     -> Custom<JSON<Value>> {
     call_ctrl!(|| {
         user.and_then(|user| {
-                          let payload = payload.into_inner();
-                          if user.user_id != payload.user_id {
-                              return Err(error::badrequest("user_id doesn't match jwt token"));
-                          }
+            let payload = payload.into_inner();
+            if user.user_id != payload.user_id {
+                return Err(error::badrequest("user_id doesn't match jwt token"));
+            }
 
-                          get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::create_paste(&payload, &conn)))
-                      })
+            get_conn!(db_pool).and_then(|conn| {
+                call_serv!(paste_serv::create_paste(&payload, &conn))
+            })
+        })
     })
 }
 
 #[get("/pastes/<id>")]
 pub fn get_paste_by_id(id: i32, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   get_conn!(db_pool).and_then(|conn| {
-                                                   call_serv!(paste_serv::get_paste_by_id(id,
-                                                                                          &conn))
-                                               })
-               })
+        get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::get_paste_by_id(id, &conn)))
+    })
 }
 
 #[get("/users/<user_id>/pastes")]
@@ -57,12 +56,12 @@ pub fn get_pastes_by_user_id(user_id: i32,
                              db_pool: State<DBPool>)
                              -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   match_or_has_roles!(token, user_id, ["admin"])
-            .and_then(|_| {
-                          get_conn!(db_pool).and_then(|conn|
-                                     call_serv!(paste_serv::get_pastes_by_user_id(user_id, &conn)))
-                      })
-               })
+        match_or_has_roles!(token, user_id, ["admin"]).and_then(|_| {
+            get_conn!(db_pool).and_then(|conn| {
+                call_serv!(paste_serv::get_pastes_by_user_id(user_id, &conn))
+            })
+        })
+    })
 }
 
 #[put("/users/<user_id>/pastes/<id>", data = "<payload>")]
@@ -91,10 +90,8 @@ pub fn delete_paste_by_id(id: i32,
                           db_pool: State<DBPool>)
                           -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   match_or_has_roles!(token, user_id, ["admin"])
-            .and_then(|_| {
-                          get_conn!(db_pool).and_then(|conn|
-                                 call_serv!(paste_serv::delete_paste(id, &conn)))
-                      })
-               })
+        match_or_has_roles!(token, user_id, ["admin"]).and_then(|_| {
+            get_conn!(db_pool).and_then(|conn| call_serv!(paste_serv::delete_paste(id, &conn)))
+        })
+    })
 }

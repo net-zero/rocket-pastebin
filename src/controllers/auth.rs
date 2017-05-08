@@ -27,21 +27,21 @@ pub fn login(payload: Form<LoginPayload>, db_pool: State<DBPool>) -> Custom<JSON
         get_conn!(db_pool)
             .and_then(|conn| call_serv!(user_serv::get_user_by_name(&payload.username, &conn)))
             .or_else(|err| {
-                         if err.code == Status::NotFound.code {
-                             return Err(user_error.clone());
-                         }
-                         Err(err)
-                     })
+                if err.code == Status::NotFound.code {
+                    return Err(user_error.clone());
+                }
+                Err(err)
+            })
             .and_then(|user| {
-                          if !user.verify_password(&payload.password) {
-                              return Err(user_error.clone());
-                          }
-                          Ok(user)
-                      })
+                if !user.verify_password(&payload.password) {
+                    return Err(user_error.clone());
+                }
+                Ok(user)
+            })
             .and_then(|user| {
-                          auth::login(&user)
-                              .or_else(|_| Err(jwt_error))
-                              .and_then(|token| Ok(format!("token: {}", token)))
-                      })
+                auth::login(&user)
+                    .or_else(|_| Err(jwt_error))
+                    .and_then(|token| Ok(format!("token: {}", token)))
+            })
     })
 }

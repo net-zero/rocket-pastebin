@@ -16,12 +16,10 @@ use self::error::Error;
 #[get("/users/me")]
 pub fn me(token: Result<UserToken<User>, Error>, db_pool: State<DBPool>) -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   token
-                       .and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
-                       .and_then(|(user, conn)| {
-                                     call_serv!(user_serv::get_user_by_id(user.user_id, &conn))
-                                 })
-               })
+        token
+            .and_then(|user| get_conn!(db_pool).and_then(|conn| Ok((user, conn))))
+            .and_then(|(user, conn)| call_serv!(user_serv::get_user_by_id(user.user_id, &conn)))
+    })
 }
 
 #[get("/users")]
@@ -29,10 +27,10 @@ pub fn get_users(token: Result<UserToken<Admin>, Error>,
                  db_pool: State<DBPool>)
                  -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   token
-                       .and_then(|_| get_conn!(db_pool))
-                       .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
-               })
+        token
+            .and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::get_user_list(&conn)))
+    })
 }
 
 #[derive(FromForm)]
@@ -69,10 +67,10 @@ pub fn get_user_by_id(id: i32,
                       db_pool: State<DBPool>)
                       -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   match_or_has_roles!(token, id, ["admin"])
-                       .and_then(|_| get_conn!(db_pool))
-                       .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
-               })
+        match_or_has_roles!(token, id, ["admin"])
+            .and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::get_user_by_id(id, &conn)))
+    })
 }
 
 #[derive(FromForm)]
@@ -108,10 +106,8 @@ pub fn update_user_by_id(id: i32,
             };
 
             get_conn!(db_pool).and_then(|conn| {
-                                            call_serv!(user_serv::update_user(id,
-                                                                              &updated_user,
-                                                                              &conn))
-                                        })
+                call_serv!(user_serv::update_user(id, &updated_user, &conn))
+            })
         })
     })
 }
@@ -122,8 +118,8 @@ pub fn delete_user_by_id(id: i32,
                          db_pool: State<DBPool>)
                          -> Custom<JSON<Value>> {
     call_ctrl!(|| {
-                   match_or_has_roles!(token, id, ["admin"])
-                       .and_then(|_| get_conn!(db_pool))
-                       .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
-               })
+        match_or_has_roles!(token, id, ["admin"])
+            .and_then(|_| get_conn!(db_pool))
+            .and_then(|conn| call_serv!(user_serv::delete_user(id, &conn)))
+    })
 }
